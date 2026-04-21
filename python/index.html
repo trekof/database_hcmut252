@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Library Management System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            color: #667eea;
+            font-size: 0.8em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .stat-card .number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+            overflow-x: auto;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            padding: 12px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            background: #e9ecef;
+        }
+
+        .tab-btn.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            background: white;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 20px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .content-section {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 1024px) {
+            .content-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .form-section h3,
+        .table-section h3 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 1.3em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 4px;
+            color: #333;
+            font-weight: 500;
+            font-size: 0.9em;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 0.9em;
+            transition: border-color 0.3s;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s;
+            font-size: 0.9em;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button.delete-btn {
+            background: #dc3545;
+            padding: 4px 8px;
+            font-size: 0.8em;
+        }
+
+        button.edit-btn {
+            background: #28a745;
+            padding: 4px 8px;
+            font-size: 0.8em;
+        }
+
+        button.view-btn {
+            background: #17a2b8;
+            padding: 4px 8px;
+            font-size: 0.8em;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .btn-group button {
+            flex: 1;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+        }
+
+        table thead {
+            background: #f8f9fa;
+        }
+
+        table th {
+            padding: 10px;
+            text-align: left;
+            color: #333;
+            font-weight: 600;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        table td {
+            padding: 10px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        table tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .actions {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        .alert {
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            display: none;
+            font-size: 0.9em;
+        }
+
+        .alert.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+
+        .alert.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .search-box {
+            margin-bottom: 15px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .form-section {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .section-info {
+            background: #e7f3ff;
+            border-left: 4px solid #667eea;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            color: #004085;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📚 Admin Dashboard</h1>
+            <p>Library Management System - Complete View</p>
+        </header>
+
+        <!-- Statistics -->
+        <div class="stats">
+            <div class="stat-card">
+                <h3>👥 Employees</h3>
+                <div class="number" id="stat-employees">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>🛍️ Customers</h3>
+                <div class="number" id="stat-customers">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>📦 Products</h3>
+                <div class="number" id="stat-products">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>📋 Orders</h3>
+                <div class="number" id="stat-orders">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>📖 Borrowings</h3>
+                <div class="number" id="stat-borrowings">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>💳 Rentals</h3>
+                <div class="number" id="stat-rentals">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>✏️ Updates</h3>
+                <div class="number" id="stat-updates">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>🔄 Renewals</h3>
+                <div class="number" id="stat-renewals">0</div>
+            </div>
+        </div>
+
+        <!-- Tabs Navigation -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('employees', event)">👥 Employees</button>
+            <button class="tab-btn" onclick="switchTab('customers', event)">🛍️ Customers</button>
+            <button class="tab-btn" onclick="switchTab('products', event)">📦 Products</button>
+            <button class="tab-btn" onclick="switchTab('orders', event)">📋 Orders</button>
+            <button class="tab-btn" onclick="switchTab('borrowing', event)">📖 Borrowing</button>
+            <button class="tab-btn" onclick="switchTab('rental', event)">💳 Rental</button>
+            <button class="tab-btn" onclick="switchTab('updates', event)">✏️ Updates</button>
+            <button class="tab-btn" onclick="switchTab('renewals', event)">🔄 Card Renewal</button>
+        </div>
+
+        <!-- EMPLOYEES TAB -->
+        <div id="employees" class="tab-content active">
+            <div class="alert" id="employees-alert"></div>
+            <div class="content-section">
+                <div class="form-section">
+                    <h3>➕ Add New Employee</h3>
+                    <div class="section-info">ℹ️ ID auto-generated as NV001, NV002, etc.</div>
+                    <form id="employees-form">
+                        <div class="form-group">
+                            <label>CMND/CCCD *</label>
+                            <input type="text" id="emp-cmnd" placeholder="123456789123" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Last Name *</label>
+                            <input type="text" id="emp-ho" placeholder="Nguyễn" required>
+                        </div>
+                        <div class="form-group">
+                            <label>First Name *</label>
+                            <input type="text" id="emp-ten" placeholder="Văn A" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Date of Birth</label>
+                            <input type="date" id="emp-dob">
+                        </div>
+                        <div class="form-group">
+                            <label>Phone</label>
+                            <input type="tel" id="emp-phone" placeholder="0912345678">
+                        </div>
+                        <div class="form-group">
+                            <label>Job Title</label>
+                            <input type="text" id="emp-job" placeholder="Nhân viên bán hàng">
+                        </div>
+                        <div class="form-group">
+                            <label>Department</label>
+                            <input type="text" id="emp-dept" placeholder="Bộ phận bán hàng">
+                        </div>
+                        <div class="form-group">
+                            <label>Gender</label>
+                            <select id="emp-gender">
+                                <option value="">-- Select --</option>
+                                <option value="Nam">Nam</option>
+                                <option value="Nữ">Nữ</option>
+                            </select>
+                        </div>
+                        <div class="btn-group">
+                            <button type="submit">➕ Add Employee</button>
+                            <button type="button" onclick="clearEmployeeForm()">Clear</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="table-section">
+                    <h3>📋 All Employees</h3>
+                    <div class="search-box">
+                        <input type="text" id="employees-search" placeholder="Search by name or ID..." onkeyup="filterEmployees()">
+                    </div>
+                    <div id="employees-loading" class="loading"><div class="spinner"></div> Loading...</div>
+                    <div class="table-wrapper">
+                        <table id="employees-table" style="display: none;">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Job</th>
+                                    <th>Department</th>
+                                    <th>Phone</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="employees-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CUSTOMERS TAB -->
+        <div id="customers" class="tab-content">
+            <div class="alert" id="customers-alert"></div>
+            <div class="content-section">
+                <div class="form-section">
+                    <h3>➕ Add New Customer</h3>
+                    <div class="section-info">ℹ️ ID auto-generated as KH001, KH002, etc.</div>
+                    <form id="customers-form">
+                        <div class="form-group">
+                            <label>Phone</label>
+                            <input type="tel" id="cust-phone" placeholder="0901234567">
+                        </div>
+                        <div class="form-group">
+                            <label>Loyalty Points</label>
+                            <input type="number" id="cust-points" placeholder="0" min="0" value="0">
+                        </div>
+                        <div class="btn-group">
+                            <button type="submit">➕ Add Customer</button>
+                            <button type="button" onclick="clearCustomerForm()">Clear</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="table-section">
+                    <h3>📋 All Customers</h3>
+                    <div class="search-box">
+                        <input type="text" id="customers-search" placeholder="Search by ID or phone..." onkeyup="filterCustomers()">
+                    </div>
+                    <div id="customers-loading" class="loading"><div class="spinner"></div> Loading...</div>
+                    <div class="table-wrapper">
+                        <table id="customers-table" style="display: none;">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Phone</th>
+                                    <th>Loyalty Points</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="customers-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PRODUCTS TAB -->
+        <div id="products" class="tab-content">
+            <div class="alert" id="products-alert"></div>
+            <div class="content-section">
+                <div class="form-section">
+                    <h3>➕ Add New Product</h3>
+                    <form id="products-form">
+                        <div class="form-group">
+                            <label>Product Name *</label>
+                            <input type="text" id="prod-name" placeholder="Lập trình Python" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Available Quantity</label>
+                            <input type="number" id="prod-qty" placeholder="50" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label>List Price</label>
+                            <input type="number" id="prod-price" placeholder="100000" min="0" step="1000">
+                        </div>
+                        <div class="btn-group">
+                            <button type="submit">➕ Add Product</button>
+                            <button type="button" onclick="clearProductForm()">Clear</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="table-section">
+                    <h3>📦 All Products</h3>
+                    <div class="search-box">
+                        <input type="text" id="products-search" placeholder="Search by name..." onkeyup="filterProducts()">
+                    </div>
+                    <div id="products-loading" class="loading"><div class="spinner"></div> Loading...</div>
+                    <div class="table-wrapper">
+                        <table id="products-table" style="display: none;">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Available</th>
+                                    <th>Price</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="products-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ORDERS TAB -->
+        <div id="orders" class="tab-content">
+            <div class="alert" id="orders-alert"></div>
+            <div class="table-section" style="padding: 20px;">
+                <h3>📋 All Orders</h3>
+                <div class="search-box">
+                    <input type="text" id="orders-search" placeholder="Search by order ID or customer..." onkeyup="filterOrders()">
+                </div>
+                <div id="orders-loading" class="loading"><div class="spinner"></div> Loading...</div>
+                <div class="table-wrapper">
+                    <table id="orders-table" style="display: none;">
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Customer</th>
+                                <th>Type</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orders-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- BORROWING TAB -->
+        <div id="borrowing" class="tab-content">
+            <div class="alert" id="borrowing-alert"></div>
+            <div class="table-section" style="padding: 20px;">
+                <h3>📖 All Borrowing Records</h3>
+                <div class="search-box">
+                    <input type="text" id="borrowing-search" placeholder="Search by ID..." onkeyup="filterBorrowing()">
+                </div>
+                <div id="borrowing-loading" class="loading"><div class="spinner"></div> Loading...</div>
+                <div class="table-wrapper">
+                    <table id="borrowing-table" style="display: none;">
+                        <thead>
+                            <tr>
+                                <th>Borrow ID</th>
+                                <th>Member</th>
+                                <th>Product</th>
+                                <th>Borrow Date</th>
+                                <th>Due Date</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="borrowing-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- RENTAL TAB -->
+        <div id="rental" class="tab-content">
+            <div class="alert" id="rental-alert"></div>
+            <div class="table-section" style="padding: 20px;">
+                <h3>💳 All Rental Records</h3>
+                <div class="search-box">
+                    <input type="text" id="rental-search" placeholder="Search by ID or customer..." onkeyup="filterRental()">
+                </div>
+                <div id="rental-loading" class="loading"><div class="spinner"></div> Loading...</div>
+                <div class="table-wrapper">
+                    <table id="rental-table" style="display: none;">
+                        <thead>
+                            <tr>
+                                <th>Rental ID</th>
+                                <th>Customer</th>
+                                <th>Product</th>
+                                <th>Rent Date</th>
+                                <th>Return Date</th>
+                                <th>Price</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rental-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- UPDATES TAB -->
+        <div id="updates" class="tab-content">
+            <div class="alert" id="updates-alert"></div>
+            <div class="table-section" style="padding: 20px;">
+                <h3>✏️ All Product Updates</h3>
+                <div class="search-box">
+                    <input type="text" id="updates-search" placeholder="Search by staff ID..." onkeyup="filterUpdates()">
+                </div>
+                <div id="updates-loading" class="loading"><div class="spinner"></div> Loading...</div>
+                <div class="table-wrapper">
+                    <table id="updates-table" style="display: none;">
+                        <thead>
+                            <tr>
+                                <th>Staff</th>
+                                <th>Product</th>
+                                <th>Date</th>
+                                <th>Qty Changed</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="updates-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- RENEWALS TAB -->
+        <div id="renewals" class="tab-content">
+            <div class="alert" id="renewals-alert"></div>
+            <div class="table-section" style="padding: 20px;">
+                <h3>🔄 Membership Card Renewals</h3>
+                <div class="search-box">
+                    <input type="text" id="renewals-search" placeholder="Search by member..." onkeyup="filterRenewals()">
+                </div>
+                <div id="renewals-loading" class="loading"><div class="spinner"></div> Loading...</div>
+                <div class="table-wrapper">
+                    <table id="renewals-table" style="display: none;">
+                        <thead>
+                            <tr>
+                                <th>Member</th>
+                                <th>Card #</th>
+                                <th>Staff</th>
+                                <th>Renewal Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="renewals-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+
+        // Tab switching
+        function switchTab(tab, event) {
+            if (event) {
+                document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+                event.target.classList.add('active');
+            }
+            
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(tab).classList.add('active');
+            
+            // Load data based on tab
+            setTimeout(() => {
+                if (tab === 'employees') loadEmployees();
+                else if (tab === 'customers') loadCustomers();
+                else if (tab === 'products') loadProducts();
+                else if (tab === 'orders') loadOrders();
+                else if (tab === 'borrowing') loadBorrowing();
+                else if (tab === 'rental') loadRental();
+                else if (tab === 'updates') loadUpdates();
+                else if (tab === 'renewals') loadRenewals();
+            }, 100);
+        }
+
+        // Load statistics
+        async function loadStats() {
+            try {
+                const response = await fetch(`${API_URL}/stats`);
+                const data = await response.json();
+                document.getElementById('stat-employees').textContent = data.employees || 0;
+                document.getElementById('stat-customers').textContent = data.customers || 0;
+                document.getElementById('stat-products').textContent = data.products || 0;
+                document.getElementById('stat-orders').textContent = data.orders || 0;
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        // Show alert message
+        function showAlert(elementId, message, type) {
+            const alert = document.getElementById(elementId);
+            alert.textContent = message;
+            alert.className = `alert ${type}`;
+            setTimeout(() => alert.className = 'alert', 5000);
+        }
+
+        // ==================== EMPLOYEES ====================
+
+        async function loadEmployees() {
+            try {
+                const response = await fetch(`${API_URL}/employees`);
+                const employees = await response.json();
+                
+                const tbody = document.getElementById('employees-tbody');
+                tbody.innerHTML = '';
+                
+                employees.forEach(emp => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${emp.IDNhanVien}</td>
+                            <td>${emp.Ho} ${emp.Ten}</td>
+                            <td>${emp.CongViec || '-'}</td>
+                            <td>${emp.BoPhanQuanLy || '-'}</td>
+                            <td>${emp.SDT || '-'}</td>
+                            <td class="actions">
+                                <button class="delete-btn" onclick="deleteEmployee('${emp.IDNhanVien}')">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                document.getElementById('employees-loading').style.display = 'none';
+                document.getElementById('employees-table').style.display = 'table';
+            } catch (error) {
+                showAlert('employees-alert', `Error loading employees: ${error}`, 'error');
+            }
+        }
+
+        async function deleteEmployee(id) {
+            if (!confirm(`Delete employee ${id}?`)) return;
+            try {
+                await fetch(`${API_URL}/employees/${id}`, { method: 'DELETE' });
+                showAlert('employees-alert', 'Employee deleted successfully!', 'success');
+                loadEmployees();
+                loadStats();
+            } catch (error) {
+                showAlert('employees-alert', `Error: ${error}`, 'error');
+            }
+        }
+
+        document.getElementById('employees-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                const response = await fetch(`${API_URL}/employees`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        CMND_CCCD: document.getElementById('emp-cmnd').value,
+                        Ho: document.getElementById('emp-ho').value,
+                        Ten: document.getElementById('emp-ten').value,
+                        NgaySinh: document.getElementById('emp-dob').value,
+                        SDT: document.getElementById('emp-phone').value,
+                        CongViec: document.getElementById('emp-job').value,
+                        BoPhanQuanLy: document.getElementById('emp-dept').value,
+                        GioiTinh: document.getElementById('emp-gender').value
+                    })
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    showAlert('employees-alert', `✅ Employee ${result.IDNhanVien} added!`, 'success');
+                    clearEmployeeForm();
+                    loadEmployees();
+                    loadStats();
+                } else {
+                    showAlert('employees-alert', `Error: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showAlert('employees-alert', `Error: ${error}`, 'error');
+            }
+        });
+
+        function clearEmployeeForm() {
+            document.getElementById('employees-form').reset();
+        }
+
+        function filterEmployees() {
+            const search = document.getElementById('employees-search').value.toLowerCase();
+            const rows = document.querySelectorAll('#employees-tbody tr');
+            rows.forEach(row => {
+                row.style.display = row.textContent.toLowerCase().includes(search) ? '' : 'none';
+            });
+        }
+
+        // ==================== CUSTOMERS ====================
+
+        async function loadCustomers() {
+            try {
+                const response = await fetch(`${API_URL}/customers`);
+                const customers = await response.json();
+                
+                const tbody = document.getElementById('customers-tbody');
+                tbody.innerHTML = '';
+                
+                customers.forEach(cust => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${cust.IDKhachHang}</td>
+                            <td>${cust.SDT || '-'}</td>
+                            <td>${cust.DiemTichLuy || 0}</td>
+                            <td class="actions">
+                                <button class="delete-btn" onclick="deleteCustomer('${cust.IDKhachHang}')">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                document.getElementById('customers-loading').style.display = 'none';
+                document.getElementById('customers-table').style.display = 'table';
+            } catch (error) {
+                showAlert('customers-alert', `Error loading customers: ${error}`, 'error');
+            }
+        }
+
+        async function deleteCustomer(id) {
+            if (!confirm(`Delete customer ${id}?`)) return;
+            try {
+                await fetch(`${API_URL}/customers/${id}`, { method: 'DELETE' });
+                showAlert('customers-alert', 'Customer deleted successfully!', 'success');
+                loadCustomers();
+                loadStats();
+            } catch (error) {
+                showAlert('customers-alert', `Error: ${error}`, 'error');
+            }
+        }
+
+        document.getElementById('customers-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                const response = await fetch(`${API_URL}/customers`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        SDT: document.getElementById('cust-phone').value,
+                        DiemTichLuy: parseInt(document.getElementById('cust-points').value) || 0
+                    })
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    showAlert('customers-alert', `✅ Customer ${result.IDKhachHang} added!`, 'success');
+                    clearCustomerForm();
+                    loadCustomers();
+                    loadStats();
+                } else {
+                    showAlert('customers-alert', `Error: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showAlert('customers-alert', `Error: ${error}`, 'error');
+            }
+        });
+
+        function clearCustomerForm() {
+            document.getElementById('customers-form').reset();
+        }
+
+        function filterCustomers() {
+            const search = document.getElementById('customers-search').value.toLowerCase();
+            const rows = document.querySelectorAll('#customers-tbody tr');
+            rows.forEach(row => {
+                row.style.display = row.textContent.toLowerCase().includes(search) ? '' : 'none';
+            });
+        }
+
+        // ==================== PRODUCTS ====================
+
+        async function loadProducts() {
+            try {
+                const response = await fetch(`${API_URL}/products`);
+                const products = await response.json();
+                
+                const tbody = document.getElementById('products-tbody');
+                tbody.innerHTML = '';
+                
+                products.forEach(prod => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${prod.IDVatPham}</td>
+                            <td>${prod.TenVatPham}</td>
+                            <td>${prod.SoLuongKhaDung || 0}</td>
+                            <td>${(prod.GiaNiemYet || 0).toLocaleString('vi-VN')} ₫</td>
+                            <td class="actions">
+                                <button class="delete-btn" onclick="deleteProduct(${prod.IDVatPham})">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                document.getElementById('products-loading').style.display = 'none';
+                document.getElementById('products-table').style.display = 'table';
+            } catch (error) {
+                showAlert('products-alert', `Error loading products: ${error}`, 'error');
+            }
+        }
+
+        async function deleteProduct(id) {
+            if (!confirm(`Delete product ${id}?`)) return;
+            try {
+                await fetch(`${API_URL}/products/${id}`, { method: 'DELETE' });
+                showAlert('products-alert', 'Product deleted successfully!', 'success');
+                loadProducts();
+                loadStats();
+            } catch (error) {
+                showAlert('products-alert', `Error: ${error}`, 'error');
+            }
+        }
+
+        document.getElementById('products-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                const response = await fetch(`${API_URL}/products`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        TenVatPham: document.getElementById('prod-name').value,
+                        SoLuongKhaDung: parseInt(document.getElementById('prod-qty').value) || 0,
+                        GiaNiemYet: parseFloat(document.getElementById('prod-price').value) || 0
+                    })
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    showAlert('products-alert', `✅ Product ID ${result.IDVatPham} added!`, 'success');
+                    clearProductForm();
+                    loadProducts();
+                    loadStats();
+                } else {
+                    showAlert('products-alert', `Error: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showAlert('products-alert', `Error: ${error}`, 'error');
+            }
+        });
+
+        function clearProductForm() {
+            document.getElementById('products-form').reset();
+        }
+
+        function filterProducts() {
+            const search = document.getElementById('products-search').value.toLowerCase();
+            const rows = document.querySelectorAll('#products-tbody tr');
+            rows.forEach(row => {
+                row.style.display = row.textContent.toLowerCase().includes(search) ? '' : 'none';
+            });
+        }
+
+        // ==================== ORDERS ====================
+
+        async function loadOrders() {
+            try {
+                const response = await fetch(`${API_URL}/orders`);
+                const orders = await response.json();
+                
+                const tbody = document.getElementById('orders-tbody');
+                tbody.innerHTML = '';
+                
+                orders.forEach(order => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${order.IDDonMuaHang}</td>
+                            <td>${order.IDKhachHang}</td>
+                            <td>${order.LoaiHoaDon}</td>
+                            <td>${order.NgayMua}</td>
+                            <td class="actions">
+                                <button class="view-btn">View</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                if (orders.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No orders found</td></tr>';
+                }
+                
+                document.getElementById('orders-loading').style.display = 'none';
+                document.getElementById('orders-table').style.display = 'table';
+            } catch (error) {
+                showAlert('orders-alert', `Error loading orders: ${error}`, 'error');
+            }
+        }
+
+        function filterOrders() {
+            const search = document.getElementById('orders-search').value.toLowerCase();
+            const rows = document.querySelectorAll('#orders-tbody tr');
+            rows.forEach(row => {
+                row.style.display = row.textContent.toLowerCase().includes(search) ? '' : 'none';
+            });
+        }
+
+        // ==================== BORROWING ====================
+
+        async function loadBorrowing() {
+            try {
+                const response = await fetch(`${API_URL}/borrowing`);
+                const borrowings = await response.json();
+                
+                const tbody = document.getElementById('borrowing-tbody');
+                tbody.innerHTML = '';
+                
+                borrowings.forEach(b => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${b.MaDonMuon}</td>
+                            <td>${b.Ho} ${b.Ten}</td>
+                            <td>${b.TenVatPham}</td>
+                            <td>${b.NgayMuon}</td>
+                            <td>${b.HanTra}</td>
+                            <td>${b.TinhTrangSauKhiTra}</td>
+                            <td class="actions">
+                                <button class="view-btn">View</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                if (borrowings.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No borrowing records found</td></tr>';
+                }
+                
+                document.getElementById('borrowing-loading').style.display = 'none';
+                document.getElementById('borrowing-table').style.display = 'table';
+                document.getElementById('stat-borrowings').textContent = borrowings.length;
+            } catch (error) {
+                showAlert('borrowing-alert', `Error loading borrowing: ${error}`, 'error');
+            }
+        }
+
+        function filterBorrowing() {
+            const search = document.getElementById('borrowing-search').value.toLowerCase();
+            const rows = document.querySelectorAll('#borrowing-tbody tr');
+            rows.forEach(row => {
+                row.style.display = row.textContent.toLowerCase().includes(search) ? '' : 'none';
+            });
+        }
+
+        // ==================== RENTAL ====================
+
+        async function loadRental() {
+            try {
+                const response = await fetch(`${API_URL}/rentals`);
+                const rentals = await response.json();
+                
+                const tbody = document.getElementById('rental-tbody');
+                tbody.innerHTML = '';
+                
+                rentals.forEach(r => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${r.MaDonThue}</td>
+                            <td>${r.IDKhachHang}</td>
+                            <td>${r.TenVatPham}</td>
+                            <td>${r.NgayThue}</td>
+                            <td>${r.NgayTra || '-'}</td>
+                            <td>${(r.GiaThue || 0).toLocaleString('vi-VN')} ₫</td>
+                            <td class="actions">
+                                <button class="view-btn">View</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                if (rentals.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No rental records found</td></tr>';
+                }
+                
+                document.getElementById('rental-loading').style.display = 'none';
+                document.getElementById('rental-table').style.display = 'table';
+                document.getElementById('stat-rentals').textContent = rentals.length;
+            } catch (error) {
+                showAlert('rental-alert', `Error loading rentals: ${error}`, 'error');
+            }
+        }
+
+        function filterRental() {
+            const search = document.getElementById('rental-search').value.toLowerCase();
+            const rows = document.querySelectorAll('#rental-tbody tr');
+            rows.forEach(row => {
+                row.style.display = row.textContent.toLowerCase().includes(search) ? '' : 'none';
+            });
+        }
+
+        // ==================== UPDATES ====================
+
+        async function loadUpdates() {
+            try {
+                // This would need an endpoint in backend
+                document.getElementById('updates-loading').style.display = 'none';
+                const tbody = document.getElementById('updates-tbody');
+                tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Update history data not yet available</td></tr>';
+                document.getElementById('updates-table').style.display = 'table';
+            } catch (error) {
+                showAlert('updates-alert', `Error loading updates: ${error}`, 'error');
+            }
+        }
+
+        function filterUpdates() {
+            const search = document.getElementById('updates-search').value.toLowerCase();
+            const rows = document.querySelectorAll('#updates-tbody tr');
+            rows.forEach(row => {
+                row.style.display = row.textContent.toLowerCase().includes(search) ? '' : 'none';
+            });
+        }
+
+        // ==================== RENEWALS ====================
+
+        async function loadRenewals() {
+            try {
+                const response = await fetch(`${API_URL}/membership`);
+                const cards = await response.json();
+                
+                const tbody = document.getElementById('renewals-tbody');
+                tbody.innerHTML = '';
+                
+                cards.forEach(card => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${card.Ho} ${card.Ten}</td>
+                            <td>${card.MaThe}</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td class="actions">
+                                <button class="view-btn">View</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                if (cards.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No membership cards found</td></tr>';
+                }
+                
+                document.getElementById('renewals-loading').style.display = 'none';
+                document.getElementById('renewals-table').style.display = 'table';
+                document.getElementById('stat-renewals').textContent = cards.length;
+            } catch (error) {
+                showAlert('renewals-alert', `Error loading renewals: ${error}`, 'error');
+            }
+        }
+
+        function filterRenewals() {
+            const search = document.getElementById('renewals-search').value.toLowerCase();
+            const rows = document.querySelectorAll('#renewals-tbody tr');
+            rows.forEach(row => {
+                row.style.display = row.textContent.toLowerCase().includes(search) ? '' : 'none';
+            });
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadStats();
+            loadEmployees();
+        });
+    </script>
+</body>
+</html>

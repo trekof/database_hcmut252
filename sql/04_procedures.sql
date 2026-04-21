@@ -1,0 +1,190 @@
+-- 04_procedures.sql
+-- Tạo PROCEDURE cho hệ thống quản lý bán hàng, giao hàng, cho thuê
+
+-- ===== NHÂN VIÊN =====
+-- Procedure: Thêm nhân viên mới
+CREATE PROCEDURE sp_insert_nhan_vien(
+    IN p_IDNhanVien VARCHAR(20),
+    IN p_CMND_CCCD VARCHAR(12),
+    IN p_Ho VARCHAR(50),
+    IN p_Ten VARCHAR(50),
+    IN p_NgaySinh DATE,
+    IN p_SDT VARCHAR(15),
+    IN p_CongViec VARCHAR(100),
+    IN p_BoPhanQuanLy VARCHAR(50)
+)
+BEGIN
+    IF EXISTS (SELECT 1 FROM NhanVien WHERE IDNhanVien = p_IDNhanVien) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Nhân viên đã tồn tại';
+    END IF;
+    
+    INSERT INTO NhanVien (IDNhanVien, CMND_CCCD, Ho, Ten, NgaySinh, SDT, CongViec, BoPhanQuanLy)
+    VALUES (p_IDNhanVien, p_CMND_CCCD, p_Ho, p_Ten, p_NgaySinh, p_SDT, p_CongViec, p_BoPhanQuanLy);
+END;
+
+-- Procedure: Lấy tất cả nhân viên
+CREATE PROCEDURE sp_get_all_nhan_vien()
+BEGIN
+    SELECT IDNhanVien, Ho, Ten, NgaySinh, SDT, CongViec, BoPhanQuanLy FROM NhanVien ORDER BY IDNhanVien;
+END;
+
+-- Procedure: Tìm nhân viên theo ID
+CREATE PROCEDURE sp_get_nhan_vien_by_id(IN p_IDNhanVien VARCHAR(20))
+BEGIN
+    SELECT IDNhanVien, Ho, Ten, NgaySinh, SDT, CongViec, BoPhanQuanLy FROM NhanVien WHERE IDNhanVien = p_IDNhanVien;
+END;
+
+-- ===== KHÁCH HÀNG =====
+-- Procedure: Thêm khách hàng mới
+CREATE PROCEDURE sp_insert_khach_hang(
+    IN p_IDKhachHang VARCHAR(20),
+    IN p_SDT VARCHAR(15)
+)
+BEGIN
+    IF EXISTS (SELECT 1 FROM KhachHang WHERE IDKhachHang = p_IDKhachHang) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Khách hàng đã tồn tại';
+    END IF;
+    
+    INSERT INTO KhachHang (IDKhachHang, SDT, DiemTichLuy)
+    VALUES (p_IDKhachHang, p_SDT, 0);
+END;
+
+-- Procedure: Lấy tất cả khách hàng
+CREATE PROCEDURE sp_get_all_khach_hang()
+BEGIN
+    SELECT IDKhachHang, SDT, DiemTichLuy FROM KhachHang ORDER BY IDKhachHang;
+END;
+
+-- Procedure: Cập nhật điểm tích lũy khách hàng
+CREATE PROCEDURE sp_update_diem_tich_luy(
+    IN p_IDKhachHang VARCHAR(20),
+    IN p_DiemThem INT
+)
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM KhachHang WHERE IDKhachHang = p_IDKhachHang) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Khách hàng không tồn tại';
+    END IF;
+    
+    UPDATE KhachHang 
+    SET DiemTichLuy = DiemTichLuy + p_DiemThem
+    WHERE IDKhachHang = p_IDKhachHang;
+END;
+
+-- ===== VẬT PHẨM =====
+-- Procedure: Thêm vật phẩm mới
+CREATE PROCEDURE sp_insert_vat_pham(
+    IN p_TenVatPham VARCHAR(100),
+    IN p_SoLuongKhaDung INT,
+    IN p_GiaNiemYet DECIMAL(10, 2)
+)
+BEGIN
+    INSERT INTO VatPham (TenVatPham, SoLuongKhaDung, GiaNiemYet)
+    VALUES (p_TenVatPham, p_SoLuongKhaDung, p_GiaNiemYet);
+END;
+
+-- Procedure: Lấy tất cả vật phẩm
+CREATE PROCEDURE sp_get_all_vat_pham()
+BEGIN
+    SELECT IDVatPham, TenVatPham, SoLuongKhaDung, GiaNiemYet FROM VatPham ORDER BY IDVatPham;
+END;
+
+-- Procedure: Cập nhật số lượng vật phẩm
+CREATE PROCEDURE sp_update_so_luong_vat_pham(
+    IN p_IDVatPham INT,
+    IN p_SoLuongKhaDung INT
+)
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM VatPham WHERE IDVatPham = p_IDVatPham) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Vật phẩm không tồn tại';
+    END IF;
+    
+    UPDATE VatPham SET SoLuongKhaDung = p_SoLuongKhaDung WHERE IDVatPham = p_IDVatPham;
+END;
+
+-- ===== ĐƠN HÀNG =====
+-- Procedure: Tạo đơn hàng mới
+CREATE PROCEDURE sp_insert_don_mua_hang(
+    IN p_LoaiHoaDon VARCHAR(50),
+    IN p_NgayMua DATE,
+    IN p_IDKhachHang VARCHAR(20),
+    OUT p_IDDonMuaHang INT
+)
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM KhachHang WHERE IDKhachHang = p_IDKhachHang) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Khách hàng không tồn tại';
+    END IF;
+    
+    INSERT INTO DonMuaHang (LoaiHoaDon, NgayMua, IDKhachHang)
+    VALUES (p_LoaiHoaDon, p_NgayMua, p_IDKhachHang);
+    
+    SET p_IDDonMuaHang = LAST_INSERT_ID();
+END;
+
+-- Procedure: Lấy tất cả đơn hàng
+CREATE PROCEDURE sp_get_all_don_hang()
+BEGIN
+    SELECT d.IDDonMuaHang, d.LoaiHoaDon, d.NgayMua, d.IDKhachHang, COUNT(ct.IDVatPham) as SoMatHang
+    FROM DonMuaHang d
+    LEFT JOIN DonHangChiTiet ct ON d.IDDonMuaHang = ct.IDDonMuaHang
+    GROUP BY d.IDDonMuaHang, d.LoaiHoaDon, d.NgayMua, d.IDKhachHang
+    ORDER BY d.NgayMua DESC;
+END;
+
+-- Procedure: Lấy chi tiết đơn hàng
+CREATE PROCEDURE sp_get_chi_tiet_don_hang(IN p_IDDonMuaHang INT)
+BEGIN
+    SELECT ct.IDDonMuaHang, ct.IDVatPham, vp.TenVatPham, ct.SoLuong, ct.GiaLucMua, 
+           (ct.SoLuong * ct.GiaLucMua) as ThanhTien
+    FROM DonHangChiTiet ct
+    JOIN VatPham vp ON ct.IDVatPham = vp.IDVatPham
+    WHERE ct.IDDonMuaHang = p_IDDonMuaHang;
+END;
+
+-- ===== GIAO HÀNG =====
+-- Procedure: Ghi nhận giao hàng
+CREATE PROCEDURE sp_insert_giao_hang(
+    IN p_IDDonMuaHang INT,
+    IN p_DiaChiNhanHang VARCHAR(100),
+    IN p_TrangThai VARCHAR(50),
+    IN p_PhiVanChuyen DECIMAL(10, 2),
+    IN p_IDNhanVien VARCHAR(20)
+)
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM TaiXeChuyenHang WHERE IDNhanVien = p_IDNhanVien) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Tài xế không tồn tại';
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM DonMuaHang WHERE IDDonMuaHang = p_IDDonMuaHang) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Đơn hàng không tồn tại';
+    END IF;
+    
+    INSERT INTO GiaoTanNha (IDDonMuaHang, DiaChiNhanHang, TrangThai, PhiVanChuyen, IDNhanVien)
+    VALUES (p_IDDonMuaHang, p_DiaChiNhanHang, p_TrangThai, p_PhiVanChuyen, p_IDNhanVien);
+END;
+
+-- Procedure: Lấy danh sách giao hàng theo tài xế
+CREATE PROCEDURE sp_get_giao_hang_by_taxi(IN p_IDNhanVien VARCHAR(20))
+BEGIN
+    SELECT g.IDDonMuaHang, d.NgayMua, d.LoaiHoaDon, d.IDKhachHang, g.PhiVanChuyen
+    FROM GiaoTanNha g
+    JOIN DonMuaHang d ON g.IDDonMuaHang = d.IDDonMuaHang
+    WHERE g.IDNhanVien = p_IDNhanVien
+    ORDER BY d.NgayMua DESC;
+END;
+
+-- ===== THỐNG KÊ =====
+-- Procedure: Tính tổng doanh thu theo khách hàng
+CREATE PROCEDURE sp_get_doanh_thu_khach_hang(IN p_IDKhachHang VARCHAR(20))
+BEGIN
+    SELECT d.IDKhachHang, k.SDT, 
+           COUNT(DISTINCT d.IDDonMuaHang) as SoHoaDon,
+           SUM(ct.SoLuong * ct.GiaLucMua) as TongDoanh,
+           SUM(g.PhiVanChuyen) as TongPhiVanChuyen,
+           (SUM(ct.SoLuong * ct.GiaLucMua) + SUM(COALESCE(g.PhiVanChuyen, 0))) as TongTT
+    FROM DonMuaHang d
+    LEFT JOIN DonHangChiTiet ct ON d.IDDonMuaHang = ct.IDDonMuaHang
+    LEFT JOIN GiaoTanNha g ON d.IDDonMuaHang = g.IDDonMuaHang
+    LEFT JOIN KhachHang k ON d.IDKhachHang = k.IDKhachHang
+    WHERE d.IDKhachHang = p_IDKhachHang
+    GROUP BY d.IDKhachHang;
+END;
