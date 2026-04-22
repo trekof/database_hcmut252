@@ -1,0 +1,445 @@
+# 🏗️ System Architecture Overview
+
+## Authentication & Authorization Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          LOGIN PAGE                                      │
+│                                                                           │
+│  Username: ________________    ┌─────────────────────────┐              │
+│  Password: ________________    │ Quick Buttons:          │              │
+│                                │ 👨‍💼 Admin             │              │
+│  [Login]                        │ 💼 Cashier             │              │
+│                                │ 👥 Customer            │              │
+│                                └─────────────────────────┘              │
+└──────────────────┬──────────────────────────────────────────────────────┘
+                   │
+                   │ POST /api/auth/login
+                   │ {username, password}
+                   ▼
+        ┌────────────────────────┐
+        │   auth_app.py          │
+        │  (Flask Backend API)   │
+        │                        │
+        │ 1. Hash password       │
+        │ 2. Query Users table   │
+        │ 3. Verify role         │
+        │ 4. Generate JWT        │
+        └────────────┬───────────┘
+                     │
+         JWT Token + User Info
+         {token, role, reference_id}
+                     │
+        ┌────────────▼───────────┐
+        │ localStorage.setItem   │
+        │ (token + user object)  │
+        └────────────┬───────────┘
+                     │
+        ┌────────────▼─────────────────┐
+        │   Role-Based Redirect        │
+        ├──────────────────────────────┤
+        │ If role == 'Admin'           │
+        │   → admin.html          │
+        │                              │
+        │ If role == 'NhanVienDungQuay' │
+        │   → cashier.html             │
+        │                              │
+        │ If role == 'KhachHang'       │
+        │   → customer.html            │
+        └──────────────────────────────┘
+```
+
+---
+
+## Dashboard Access Control
+
+```
+                    ┌──────────────────────────┐
+                    │    LOGIN SUCCESSFUL      │
+                    │  (JWT Token Generated)   │
+                    └────────────┬─────────────┘
+                                 │
+                ┌────────────────┼────────────────┐
+                │                │                │
+                ▼                ▼                ▼
+        ┌─────────────┐   ┌──────────────┐   ┌──────────────┐
+        │   ADMIN     │   │   CASHIER    │   │  CUSTOMER    │
+        │  (NV Role)  │   │(NV Role)     │   │ (KH Role)    │
+        └─────────────┘   └──────────────┘   └──────────────┘
+             │                  │                  │
+        ┌────▼─────────┐   ┌────▼────────┐   ┌────▼─────────┐
+        │ admin.html   │   │cashier.html │   │customer.html │
+        ├──────────────┤   ├─────────────┤   ├──────────────┤
+        │ 👥 Empl      │   │ 🛍️ Cust    │   │ 👤 Profile  │
+        │ 🛍️ Cust     │   │ 📦 Prod    │   │ 📖 Borrow   │
+        │ 📦 Prod     │   │ 📖 Borrow  │   │ 💳 Rental   │
+        │ 📖 Borrow   │   │ 💳 Rental  │   │ 📚 Catalog  │
+        │ 💳 Rental   │   │ 📊 Stats   │   │             │
+        │ 📊 Stats    │   │            │   │             │
+        └──────────────┘   └────────────┘   └──────────────┘
+```
+
+---
+
+## API Endpoint Authorization Matrix
+
+```
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                    ENDPOINT → ROLE AUTHORIZATION                          ║
+╠═════════════════════════════════════════════════════════════════════════════╣
+║ Endpoint              │ Admin │ Cashier │ Customer │ Filter              ║
+╠═════════════════════════════════════════════════════════════════════════════╣
+║ /api/auth/login       │  ✅   │   ✅    │   ✅     │ None                ║
+║ /api/employees        │  ✅   │   ❌    │   ❌     │ Admins only         ║
+║ /api/customers        │  ✅   │   ✅    │   ✅     │ Role-filtered       ║
+║ /api/customers/me     │  ❌   │   ❌    │   ✅     │ Own profile only    ║
+║ /api/products         │  ✅   │   ✅    │   ✅     │ Public              ║
+║ /api/borrowing        │  ✅   │   ✅    │   ✅     │ Role-filtered       ║
+║ /api/rentals          │  ✅   │   ✅    │   ✅     │ Role-filtered       ║
+║ /api/stats            │  ✅   │   ✅    │   ✅     │ Role-specific data  ║
+╚═════════════════════════════════════════════════════════════════════════════╝
+
+Role-Filtered Details:
+  • Customers: Admin/Cashier see all, Customer sees own (via reference_id)
+  • Borrowing: Admin/Cashier see all, Customer sees own (auto-filtered)
+  • Rentals: Admin/Cashier see all, Customer sees own (auto-filtered)
+  • Stats: Different data returned based on role
+```
+
+---
+
+## JWT Token Structure
+
+```
+JWT Token = Header.Payload.Signature
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ HEADER                                                                   │
+├─────────────────────────────────────────────────────────────────────────┤
+│ {                                                                       │
+│   "typ": "JWT",                                                        │
+│   "alg": "HS256"                                                       │
+│ }                                                                       │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ PAYLOAD (User Claims)                                                   │
+├─────────────────────────────────────────────────────────────────────────┤
+│ {                                                                       │
+│   "user_id": 1,                                                        │
+│   "username": "admin",                                                 │
+│   "role": "Admin",                                                     │
+│   "reference_id": "NV001",                                             │
+│   "exp": 1704067200,        ← Expires in 24 hours                     │
+│   "iat": 1703980800         ← Issued at                               │
+│ }                                                                       │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ SIGNATURE                                                                │
+├─────────────────────────────────────────────────────────────────────────┤
+│ HMAC-SHA256(Base64URL(header) + "." + Base64URL(payload), SECRET_KEY)  │
+│                                                                         │
+│ Result: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2...               │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Data Flow: Customer Viewing Own Records
+
+```
+┌──────────────────┐
+│  customer.html   │
+│   (Frontend)     │
+└────────┬─────────┘
+         │
+         │ GET /api/borrowing
+         │ Header: Authorization: Bearer <token>
+         │ Token Payload: {role: "KhachHang", reference_id: "KH001"}
+         │
+         ▼
+┌────────────────────────────────┐
+│   auth_app.py (@require_auth)  │
+│                                │
+│ 1. Verify token signature      │
+│ 2. Decode JWT                  │
+│ 3. Check expiration            │
+│ 4. Store in request.user       │
+└────────┬───────────────────────┘
+         │
+         ▼
+┌────────────────────────────────┐
+│  /api/borrowing Route Handler  │
+│                                │
+│ IF role == 'KhachHang':        │
+│   customer_id = reference_id   │
+│   WHERE IDKhachHang = KH001    │
+│                                │
+│ ELSE:                          │
+│   SELECT all borrowing records │
+└────────┬───────────────────────┘
+         │
+         ▼
+┌────────────────────────────────┐
+│  Database Query                │
+│                                │
+│ SELECT * FROM LanMuon          │
+│ WHERE IDKhachHang = 'KH001'    │
+│                                │
+│ Result: [                       │
+│   {MaDonMuon: 'MUO001', ...},  │
+│   {MaDonMuon: 'MUO002', ...}   │
+│ ]                              │
+└────────┬───────────────────────┘
+         │
+         ▼
+┌────────────────────────────────┐
+│  JSON Response                 │
+│                                │
+│ 200 OK                         │
+│ [                              │
+│   {                            │
+│     "MaDonMuon": "MUO001",     │
+│     "IDKhachHang": "KH001",    │
+│     "TenVatPham": "Book A",    │
+│     "NgayMuon": "2024-01-01"   │
+│   },                           │
+│   ...                          │
+│ ]                              │
+└────────┬───────────────────────┘
+         │
+         ▼
+┌──────────────────┐
+│  customer.html   │
+│  Displays:       │
+│  "My Borrowing"  │
+│  - Book A        │
+│  - Book B        │
+│  (only own)      │
+└──────────────────┘
+```
+
+---
+
+## Permission Hierarchy
+
+```
+                    ┌────────────────┐
+                    │  Unauthenticated│
+                    │   (No Token)    │
+                    └────────┬────────┘
+                             │
+                       ❌ 401 Unauthorized
+                             │
+                    ┌────────▼────────────┐
+                    │  Token Valid        │
+                    │  Role Verified      │
+                    └────────┬────────────┘
+                             │
+                      ┌──────┴──────────────────────┐
+                      │                             │
+                      ▼                             ▼
+            ┌──────────────────┐         ┌──────────────────┐
+            │  Allowed Access  │         │ Forbidden Access │
+            │  (✅ 200 OK)     │         │  (❌ 403)        │
+            └──────────────────┘         └──────────────────┘
+                    │                             │
+            ┌───────▼─────────┐         └─────────┬─────────┐
+            │ Admin endpoints │             Others attempting
+            │ Cashier visible │             higher-level access
+            │ Customer own    │
+            └─────────────────┘
+```
+
+---
+
+## Database Relationships for RBAC
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         Users Table                                      │
+├─────────────────────────────────────────────────────────────────────────┤
+│ IDUser (PK) │ Username │ Password │  Role        │ ReferenceID          │
+├─────────────────────────────────────────────────────────────────────────┤
+│ 1           │ admin    │ SHA256() │ Admin        │ NV001 ──────────┐    │
+│ 2           │ cashier  │ SHA256() │ NhanVienDQ   │ NV002 ──────┐   │    │
+│ 3           │ customer │ SHA256() │ KhachHang    │ KH001 ────┐ │   │    │
+└─────────────────────────────────────────────────────────────┼─┼───┼────┘
+                                                              │ │   │
+        ┌─────────────────────────────────────────────────────┘ │   │
+        │                                                       │   │
+        ▼                                                       │   │
+┌──────────────────────────────────────────────────────────┐   │   │
+│                   NhanVien Table                         │   │   │
+├──────────────────────────────────────────────────────────┤   │   │
+│ IDNhanVien │ Ho │ Ten │ CMND │ SDT │ CongViec │ BoPhan  │   │   │
+├──────────────────────────────────────────────────────────┤   │   │
+│ NV001      │... │...  │ ...  │ ... │ Manager  │ Admin   │◄──┘   │
+│ NV002      │... │...  │ ...  │ ... │ Cashier  │ Sales   │◄──┐   │
+└──────────────────────────────────────────────────────────┘     │   │
+                                                                  │
+        ┌─────────────────────────────────────────────────────────┘
+        │
+        ▼
+┌──────────────────────────────────────────────────────────┐
+│                  KhachHang Table                         │
+├──────────────────────────────────────────────────────────┤
+│ IDKhachHang │ SDT │ DiemTichLuy │ MaThe │ DiaChiPhao    │
+├──────────────────────────────────────────────────────────┤
+│ KH001       │ ... │ 100         │ 12345 │ ...           │◄──┐
+│ KH002       │ ... │ 50          │ 12346 │ ...           │   │
+└──────────────────────────────────────────────────────────┘   │
+                                                               │
+        ┌──────────────────────────────────────────────────────┘
+        │
+        │ Users.ReferenceID links to:
+        │ - NhanVien.IDNhanVien (for Admin/Cashier roles)
+        │ - KhachHang.IDKhachHang (for Customer role)
+        │
+        └─ This allows filtering: "Show me records for this user"
+```
+
+---
+
+## Access Control Decorator Pattern
+
+```python
+# Pattern Used in auth_app.py:
+
+@app.route('/api/employees', methods=['GET'])
+@require_auth                      # ← Check JWT token exists & valid
+@require_role('Admin')             # ← Check role is Admin
+def get_employees():
+    # Only Admin gets here
+    return employees_list
+
+# Another example:
+
+@app.route('/api/borrowing', methods=['GET'])
+@require_auth                      # ← Check JWT token
+@require_role('Admin', 'NhanVienDungQuay', 'KhachHang')  # ← All can access
+def get_borrowing():
+    role = request.user['role']
+    reference_id = request.user['reference_id']
+    
+    if role == 'KhachHang':
+        # Customer sees only own borrowing
+        return borrowing_for_customer(reference_id)
+    else:
+        # Admin/Staff see all
+        return all_borrowing()
+```
+
+---
+
+## Security Layers
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          LAYER 1: TRANSPORT                              │
+│                       (Should use HTTPS)                                 │
+├─────────────────────────────────────────────────────────────────────────┤
+│ CURRENT: HTTP (ok for development)                                      │
+│ PROD: HTTPS with SSL/TLS certificate                                    │
+└─────────────────────────────────────────────────────────────────────────┘
+                                   │
+┌──────────────────────────────────▼──────────────────────────────────────┐
+│                       LAYER 2: AUTHENTICATION                            │
+├─────────────────────────────────────────────────────────────────────────┤
+│ ✅ Username/Password verification                                       │
+│ ✅ SHA256 password hashing                                              │
+│ ⚠️  TODO: Use bcrypt for better security                                │
+│ ✅ JWT token generation (24 hour expiry)                                │
+└─────────────────────────────────────────────────────────────────────────┘
+                                   │
+┌──────────────────────────────────▼──────────────────────────────────────┐
+│                    LAYER 3: AUTHORIZATION (RBAC)                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│ ✅ Role enum (Admin/NhanVienDungQuay/KhachHang)                         │
+│ ✅ Endpoint-level access control via @require_role                      │
+│ ✅ Data-level filtering (customers see only own data)                   │
+│ ✅ Reference ID linking for data ownership                              │
+└─────────────────────────────────────────────────────────────────────────┘
+                                   │
+┌──────────────────────────────────▼──────────────────────────────────────┐
+│                      LAYER 4: DATA VALIDATION                            │
+├─────────────────────────────────────────────────────────────────────────┤
+│ ⚠️  TODO: Input validation for all fields                               │
+│ ⚠️  TODO: SQL injection prevention (currently using parameterized)      │
+│ ⚠️  TODO: CSRF token protection                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Deployment Architecture (Production Ready)
+
+```
+                         ┌─────────────────┐
+                         │   Browser       │
+                         │ (User's PC)     │
+                         └────────┬────────┘
+                                  │ HTTPS
+                                  │
+                    ┌─────────────▼─────────────┐
+                    │  Nginx/Apache (Reverse    │
+                    │  Proxy, CORS, SSL)        │
+                    └─────────────┬─────────────┘
+                                  │ HTTP (internal)
+                 ┌────────────────┼────────────────┐
+                 │                │                │
+                 ▼                ▼                ▼
+         ┌─────────────┐  ┌──────────────┐  ┌──────────────┐
+         │ auth_app.py │  │auth_app.py   │  │ auth_app.py  │
+         │ Instance 1  │  │ Instance 2   │  │ Instance N   │
+         │ (Port 5000) │  │(Port 5001)   │  │(Port 500N)   │
+         └──────┬──────┘  └──────┬───────┘  └──────┬───────┘
+                │                │                │
+                │ Database Connection Pool       │
+                └────────────────┬────────────────┘
+                                 │
+                        ┌────────▼─────────┐
+                        │  MySQL Database  │
+                        │  (Production)    │
+                        └──────────────────┘
+```
+
+---
+
+## Summary: Who Can Do What
+
+```
+╔════════════════════════════════════════════════════════════════════════╗
+║                                                                        ║
+║  ADMIN (💼 admin/admin123)                                             ║
+║  ├─ CREATE ✅: Employees, Customers, Products                         ║
+║  ├─ READ ✅: Everything                                               ║
+║  ├─ UPDATE ⚠️: Via Delete+Create (not yet implemented)               ║
+║  ├─ DELETE ✅: Employees, Customers, Products                         ║
+║  └─ VIEW ✅: All statistics, all records                              ║
+║                                                                        ║
+║  CASHIER (💼 cashier/cashier123)                                       ║
+║  ├─ CREATE ✅: Customers only                                         ║
+║  ├─ READ ✅: Customers, Products, Borrowing, Rentals (all)            ║
+║  ├─ UPDATE ❌: Not allowed                                            ║
+║  ├─ DELETE ❌: Not allowed                                            ║
+║  └─ VIEW ✅: Transaction statistics                                   ║
+║                                                                        ║
+║  CUSTOMER (👥 customer/customer123)                                    ║
+║  ├─ CREATE ❌: Not allowed                                            ║
+║  ├─ READ ✅: Own profile, own borrowing, own rentals, products        ║
+║  ├─ UPDATE ❌: Not allowed                                            ║
+║  ├─ DELETE ❌: Not allowed                                            ║
+║  └─ VIEW ✅: Personal statistics only                                 ║
+║                                                                        ║
+╚════════════════════════════════════════════════════════════════════════╝
+```
+
+---
+
+This architecture ensures:
+- ✅ **Confidentiality**: Only authorized users see their data
+- ✅ **Integrity**: Only authorized users can modify data
+- ✅ **Availability**: Role-based access doesn't impact performance
+- ✅ **Auditability**: Each action tied to authenticated user

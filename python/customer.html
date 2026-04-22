@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Portal - Library Management</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h1 {
+            font-size: 2em;
+        }
+
+        .user-info {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .logout-btn {
+            background: rgba(255, 255, 255, 0.3);
+            color: white;
+            border: 1px solid white;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            color: #007bff;
+            font-size: 0.8em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .stat-card .number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            padding: 12px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            background: #e9ecef;
+        }
+
+        .tab-btn.active {
+            color: #007bff;
+            border-bottom-color: #007bff;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 20px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .profile-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .profile-field {
+            display: grid;
+            grid-template-columns: 150px 1fr;
+            margin-bottom: 15px;
+            gap: 10px;
+        }
+
+        .profile-field label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .profile-field value {
+            color: #666;
+        }
+
+        .section-title {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 1.3em;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+
+        .alert {
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            display: none;
+            font-size: 0.9em;
+        }
+
+        .alert.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+
+        .alert.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+            display: block;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .search-box {
+            margin-bottom: 15px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+        }
+
+        table thead {
+            background: #f8f9fa;
+        }
+
+        table th {
+            padding: 10px;
+            text-align: left;
+            color: #333;
+            font-weight: 600;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        table td {
+            padding: 10px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        table tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .restricted-notice {
+            background: #e7f3ff;
+            border-left: 4px solid #007bff;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            color: #004085;
+        }
+
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .product-card {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            transition: all 0.3s;
+        }
+
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .product-name {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .product-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .product-info label {
+            font-weight: 500;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .product-price {
+            font-size: 1.3em;
+            color: #007bff;
+            font-weight: 600;
+        }
+
+        .product-qty {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .product-qty.available {
+            color: #28a745;
+        }
+
+        .product-qty.limited {
+            color: #ffc107;
+        }
+
+        .product-qty.unavailable {
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📚 My Library Account</h1>
+            <div class="user-info">
+                <span id="userDisplay"></span>
+                <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+            </div>
+        </header>
+
+        <!-- Statistics -->
+        <div class="stats">
+            <div class="stat-card">
+                <h3>🏷️ Member Card</h3>
+                <div class="number" id="stat-card">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>📖 Active Borrowing</h3>
+                <div class="number" id="stat-borrowing">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>💳 Active Rentals</h3>
+                <div class="number" id="stat-rentals">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>⭐ Loyalty Points</h3>
+                <div class="number" id="stat-points">-</div>
+            </div>
+        </div>
+
+        <!-- Tabs Navigation -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('profile', event)">👤 My Profile</button>
+            <button class="tab-btn" onclick="switchTab('borrowing', event)">📖 My Borrowing</button>
+            <button class="tab-btn" onclick="switchTab('rentals', event)">💳 My Rentals</button>
+            <button class="tab-btn" onclick="switchTab('catalog', event)">📚 Browse Products</button>
+        </div>
+
+        <!-- PROFILE TAB -->
+        <div id="profile" class="tab-content active">
+            <div class="alert" id="profile-alert"></div>
+            <div class="profile-card">
+                <h2 class="section-title">👤 Your Account Information</h2>
+                <div class="restricted-notice">
+                    📖 This is your personal account information. You can view your profile, borrowing history, rentals, and browse available products.
+                </div>
+                <div id="profile-loading" class="loading"><div class="spinner"></div></div>
+                <div id="profile-content" style="display: none;">
+                    <div class="profile-field">
+                        <label>📋 Customer ID:</label>
+                        <value id="profile-id"></value>
+                    </div>
+                    <div class="profile-field">
+                        <label>📞 Phone:</label>
+                        <value id="profile-phone"></value>
+                    </div>
+                    <div class="profile-field">
+                        <label>⭐ Loyalty Points:</label>
+                        <value id="profile-points"></value>
+                    </div>
+                    <div class="profile-field">
+                        <label>📚 Total Borrowed:</label>
+                        <value id="profile-borrowed"></value>
+                    </div>
+                    <div class="profile-field">
+                        <label>💳 Total Rented:</label>
+                        <value id="profile-rented"></value>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BORROWING TAB -->
+        <div id="borrowing" class="tab-content">
+            <div class="alert" id="borrowing-alert"></div>
+            <h2 class="section-title">📖 My Borrowing History</h2>
+            <div class="restricted-notice">
+                📖 Showing only your borrowing records
+            </div>
+            <div class="search-box">
+                <input type="text" id="borrowing-search" placeholder="Search..." onkeyup="filterTable('borrowing')">
+            </div>
+            <div id="borrowing-loading" class="loading"><div class="spinner"></div></div>
+            <div id="borrowing-empty" class="empty-state" style="display: none;">
+                <div class="empty-state-icon">📖</div>
+                <p>You haven't borrowed any items yet</p>
+            </div>
+            <div class="table-wrapper">
+                <table id="borrowing-table" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>Borrow ID</th>
+                            <th>Product</th>
+                            <th>Borrow Date</th>
+                            <th>Due Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="borrowing-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- RENTALS TAB -->
+        <div id="rentals" class="tab-content">
+            <div class="alert" id="rentals-alert"></div>
+            <h2 class="section-title">💳 My Rental History</h2>
+            <div class="restricted-notice">
+                💳 Showing only your rental records
+            </div>
+            <div class="search-box">
+                <input type="text" id="rentals-search" placeholder="Search..." onkeyup="filterTable('rentals')">
+            </div>
+            <div id="rentals-loading" class="loading"><div class="spinner"></div></div>
+            <div id="rentals-empty" class="empty-state" style="display: none;">
+                <div class="empty-state-icon">💳</div>
+                <p>You haven't rented any items yet</p>
+            </div>
+            <div class="table-wrapper">
+                <table id="rentals-table" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>Rental ID</th>
+                            <th>Product</th>
+                            <th>Rental Date</th>
+                            <th>Return Date</th>
+                            <th>Price</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rentals-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- CATALOG TAB -->
+        <div id="catalog" class="tab-content">
+            <div class="alert" id="catalog-alert"></div>
+            <h2 class="section-title">📚 Browse Available Products</h2>
+            <div class="restricted-notice">
+                📚 Browse our complete product catalog
+            </div>
+            <div class="search-box">
+                <input type="text" id="catalog-search" placeholder="Search products..." onkeyup="filterProducts()">
+            </div>
+            <div id="catalog-loading" class="loading"><div class="spinner"></div></div>
+            <div id="catalog-empty" class="empty-state" style="display: none;">
+                <div class="empty-state-icon">📦</div>
+                <p>No products available at this time</p>
+            </div>
+            <div id="catalog-content" class="product-grid" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+        let token = localStorage.getItem('token');
+        let currentUser = JSON.parse(localStorage.getItem('user'));
+        let allProducts = [];
+
+        window.addEventListener('load', () => {
+            if (!token || currentUser.role !== 'KhachHang') {
+                window.location.href = '/login.html';
+                return;
+            }
+            
+            document.getElementById('userDisplay').textContent = `👤 ${currentUser.username} (Customer)`;
+            loadProfile();
+            loadStats();
+        });
+
+        function getAuthHeader() {
+            return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+        }
+
+        function switchTab(tab, event) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(tab).classList.add('active');
+            
+            setTimeout(() => {
+                if (tab === 'profile') loadProfile();
+                else if (tab === 'borrowing') loadBorrowing();
+                else if (tab === 'rentals') loadRentals();
+                else if (tab === 'catalog') loadCatalog();
+            }, 100);
+        }
+
+        async function loadProfile() {
+            try {
+                document.getElementById('profile-loading').style.display = 'block';
+                document.getElementById('profile-content').style.display = 'none';
+                
+                const res = await fetch(`${API_URL}/customers/me`, { headers: getAuthHeader() });
+                const customer = await res.json();
+                
+                document.getElementById('profile-id').textContent = customer.IDKhachHang || '-';
+                document.getElementById('profile-phone').textContent = customer.SDT || '-';
+                document.getElementById('profile-points').textContent = customer.DiemTichLuy || 0;
+                document.getElementById('profile-borrowed').textContent = customer.borrowingCount || 0;
+                document.getElementById('profile-rented').textContent = customer.rentalCount || 0;
+                
+                document.getElementById('profile-loading').style.display = 'none';
+                document.getElementById('profile-content').style.display = 'block';
+            } catch (e) {
+                document.getElementById('profile-loading').style.display = 'none';
+                document.getElementById('profile-alert').innerHTML = '❌ Error loading profile: ' + e.message;
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const res = await fetch(`${API_URL}/stats`, { headers: getAuthHeader() });
+                const data = await res.json();
+                document.getElementById('stat-card').textContent = currentUser.reference_id || '-';
+                document.getElementById('stat-borrowing').textContent = data.borrowing || 0;
+                document.getElementById('stat-rentals').textContent = data.rentals || 0;
+                document.getElementById('stat-points').textContent = data.points || 0;
+            } catch (e) {
+                console.error('Stats error:', e);
+            }
+        }
+
+        function showAlert(id, msg, type) {
+            const alert = document.getElementById(id);
+            alert.innerHTML = msg;
+            alert.className = `alert ${type}`;
+            setTimeout(() => alert.className = 'alert', 5000);
+        }
+
+        // BORROWING
+        async function loadBorrowing() {
+            try {
+                document.getElementById('borrowing-loading').style.display = 'block';
+                document.getElementById('borrowing-table').style.display = 'none';
+                document.getElementById('borrowing-empty').style.display = 'none';
+                
+                const res = await fetch(`${API_URL}/borrowing`, { headers: getAuthHeader() });
+                const items = await res.json();
+                
+                const tbody = document.getElementById('borrowing-tbody');
+                tbody.innerHTML = '';
+                
+                if (items.length === 0) {
+                    document.getElementById('borrowing-loading').style.display = 'none';
+                    document.getElementById('borrowing-empty').style.display = 'block';
+                    return;
+                }
+                
+                items.forEach(item => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${item.MaDonMuon || '-'}</td>
+                            <td>${item.TenVatPham}</td>
+                            <td>${item.NgayMuon}</td>
+                            <td>${item.HanTra || '-'}</td>
+                            <td>${item.TinhTrangSauKhiTra || '-'}</td>
+                        </tr>
+                    `;
+                });
+                
+                document.getElementById('borrowing-loading').style.display = 'none';
+                document.getElementById('borrowing-table').style.display = 'table';
+            } catch (e) {
+                document.getElementById('borrowing-loading').style.display = 'none';
+                showAlert('borrowing-alert', '❌ Error loading borrowing records', 'error');
+            }
+        }
+
+        // RENTALS
+        async function loadRentals() {
+            try {
+                document.getElementById('rentals-loading').style.display = 'block';
+                document.getElementById('rentals-table').style.display = 'none';
+                document.getElementById('rentals-empty').style.display = 'none';
+                
+                const res = await fetch(`${API_URL}/rentals`, { headers: getAuthHeader() });
+                const items = await res.json();
+                
+                const tbody = document.getElementById('rentals-tbody');
+                tbody.innerHTML = '';
+                
+                if (items.length === 0) {
+                    document.getElementById('rentals-loading').style.display = 'none';
+                    document.getElementById('rentals-empty').style.display = 'block';
+                    return;
+                }
+                
+                items.forEach(item => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${item.MaDonThue || '-'}</td>
+                            <td>${item.TenVatPham}</td>
+                            <td>${item.NgayThue}</td>
+                            <td>${item.NgayTra || '-'}</td>
+                            <td>${(item.GiaThue || 0).toLocaleString('vi-VN')} ₫</td>
+                        </tr>
+                    `;
+                });
+                
+                document.getElementById('rentals-loading').style.display = 'none';
+                document.getElementById('rentals-table').style.display = 'table';
+            } catch (e) {
+                document.getElementById('rentals-loading').style.display = 'none';
+                showAlert('rentals-alert', '❌ Error loading rentals', 'error');
+            }
+        }
+
+        // CATALOG
+        async function loadCatalog() {
+            try {
+                document.getElementById('catalog-loading').style.display = 'block';
+                document.getElementById('catalog-content').style.display = 'none';
+                document.getElementById('catalog-empty').style.display = 'none';
+                
+                const res = await fetch(`${API_URL}/products`, { headers: getAuthHeader() });
+                allProducts = await res.json();
+                
+                if (allProducts.length === 0) {
+                    document.getElementById('catalog-loading').style.display = 'none';
+                    document.getElementById('catalog-empty').style.display = 'block';
+                    return;
+                }
+                
+                renderCatalog(allProducts);
+                document.getElementById('catalog-loading').style.display = 'none';
+                document.getElementById('catalog-content').style.display = 'grid';
+            } catch (e) {
+                document.getElementById('catalog-loading').style.display = 'none';
+                showAlert('catalog-alert', '❌ Error loading products', 'error');
+            }
+        }
+
+        function renderCatalog(products) {
+            const content = document.getElementById('catalog-content');
+            content.innerHTML = '';
+            
+            products.forEach(p => {
+                let qtyClass = 'available';
+                let qtyText = `${p.SoLuongKhaDung || 0} available`;
+                
+                if (p.SoLuongKhaDung === 0) {
+                    qtyClass = 'unavailable';
+                    qtyText = 'Out of stock';
+                } else if (p.SoLuongKhaDung <= 3) {
+                    qtyClass = 'limited';
+                    qtyText = `Only ${p.SoLuongKhaDung} left`;
+                }
+                
+                content.innerHTML += `
+                    <div class="product-card">
+                        <div class="product-name">${p.TenVatPham}</div>
+                        <div class="product-info">
+                            <label>Price:</label>
+                            <span class="product-price">${(p.GiaNiemYet || 0).toLocaleString('vi-VN')} ₫</span>
+                        </div>
+                        <div class="product-qty ${qtyClass}">
+                            📦 ${qtyText}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function filterProducts() {
+            const search = document.getElementById('catalog-search').value.toLowerCase();
+            const filtered = allProducts.filter(p => 
+                p.TenVatPham.toLowerCase().includes(search)
+            );
+            renderCatalog(filtered);
+        }
+
+        function filterTable(tab) {
+            const search = document.getElementById(`${tab}-search`).value.toLowerCase();
+            const rows = document.querySelectorAll(`#${tab}-tbody tr`);
+            rows.forEach(row => {
+                row.style.display = row.textContent.toLowerCase().includes(search) ? '' : 'none';
+            });
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/login.html';
+        }
+    </script>
+</body>
+</html>

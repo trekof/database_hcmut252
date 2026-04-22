@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Library Management</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h1 {
+            font-size: 2em;
+            margin: 0;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logout-btn {
+            background: rgba(255, 255, 255, 0.3);
+            color: white;
+            border: 1px solid white;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            color: #667eea;
+            font-size: 0.8em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .stat-card .number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+            overflow-x: auto;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            padding: 12px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            background: #e9ecef;
+        }
+
+        .tab-btn.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            background: white;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 20px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .content-section {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 1024px) {
+            .content-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .form-section h3,
+        .table-section h3 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 1.3em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 4px;
+            color: #333;
+            font-weight: 500;
+            font-size: 0.9em;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 0.9em;
+            transition: border-color 0.3s;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s;
+            font-size: 0.9em;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button.delete-btn {
+            background: #dc3545;
+            padding: 4px 8px;
+            font-size: 0.8em;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .btn-group button {
+            flex: 1;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+        }
+
+        table thead {
+            background: #f8f9fa;
+        }
+
+        table th {
+            padding: 10px;
+            text-align: left;
+            color: #333;
+            font-weight: 600;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        table td {
+            padding: 10px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        table tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .actions {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        .alert {
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            display: none;
+            font-size: 0.9em;
+        }
+
+        .alert.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+
+        .alert.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .search-box {
+            margin-bottom: 15px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .form-section {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .section-info {
+            background: #e7f3ff;
+            border-left: 4px solid #667eea;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            color: #004085;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎯 Admin Dashboard</h1>
+            <div class="user-info">
+                <span id="userDisplay"></span>
+                <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+            </div>
+        </header>
+
+        <!-- Statistics -->
+        <div class="stats">
+            <div class="stat-card">
+                <h3>👥 Employees</h3>
+                <div class="number" id="stat-employees">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>🛍️ Customers</h3>
+                <div class="number" id="stat-customers">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>📦 Products</h3>
+                <div class="number" id="stat-products">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>📋 Orders</h3>
+                <div class="number" id="stat-orders">-</div>
+            </div>
+        </div>
+
+        <!-- Tabs Navigation -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('employees', event)">👥 Employees</button>
+            <button class="tab-btn" onclick="switchTab('customers', event)">🛍️ Customers</button>
+            <button class="tab-btn" onclick="switchTab('products', event)">📦 Products</button>
+            <button class="tab-btn" onclick="switchTab('borrowing', event)">📖 Borrowing</button>
+            <button class="tab-btn" onclick="switchTab('rental', event)">💳 Rental</button>
+        </div>
+
+        <!-- EMPLOYEES TAB -->
+        <div id="employees" class="tab-content active">
+            <div class="alert" id="employees-alert"></div>
+            <div class="content-section">
+                <div class="form-section">
+                    <h3>➕ Add New Employee</h3>
+                    <form id="employees-form">
+                        <div class="form-group">
+                            <label>CMND/CCCD *</label>
+                            <input type="text" id="emp-cmnd" placeholder="123456789123" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Last Name *</label>
+                            <input type="text" id="emp-ho" placeholder="Nguyễn" required>
+                        </div>
+                        <div class="form-group">
+                            <label>First Name *</label>
+                            <input type="text" id="emp-ten" placeholder="Văn A" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Phone</label>
+                            <input type="tel" id="emp-phone" placeholder="0912345678">
+                        </div>
+                        <div class="form-group">
+                            <label>Job Title</label>
+                            <input type="text" id="emp-job" placeholder="Nhân viên">
+                        </div>
+                        <div class="form-group">
+                            <label>Department</label>
+                            <input type="text" id="emp-dept" placeholder="Department">
+                        </div>
+                        <div class="btn-group">
+                            <button type="submit">➕ Add</button>
+                            <button type="button" onclick="clearForm('employees-form')">Clear</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="table-section">
+                    <h3>📋 All Employees</h3>
+                    <div class="search-box">
+                        <input type="text" id="employees-search" placeholder="Search..." onkeyup="filterTable('employees')">
+                    </div>
+                    <div id="employees-loading" class="loading"><div class="spinner"></div></div>
+                    <div class="table-wrapper">
+                        <table id="employees-table" style="display: none;">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Job</th>
+                                    <th>Phone</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="employees-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CUSTOMERS TAB -->
+        <div id="customers" class="tab-content">
+            <div class="alert" id="customers-alert"></div>
+            <div class="content-section">
+                <div class="form-section">
+                    <h3>➕ Add Customer</h3>
+                    <form id="customers-form">
+                        <div class="form-group">
+                            <label>Phone</label>
+                            <input type="tel" id="cust-phone" placeholder="0901234567">
+                        </div>
+                        <div class="form-group">
+                            <label>Loyalty Points</label>
+                            <input type="number" id="cust-points" placeholder="0" min="0" value="0">
+                        </div>
+                        <div class="btn-group">
+                            <button type="submit">➕ Add</button>
+                            <button type="button" onclick="clearForm('customers-form')">Clear</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="table-section">
+                    <h3>📋 All Customers</h3>
+                    <div class="search-box">
+                        <input type="text" id="customers-search" placeholder="Search..." onkeyup="filterTable('customers')">
+                    </div>
+                    <div id="customers-loading" class="loading"><div class="spinner"></div></div>
+                    <div class="table-wrapper">
+                        <table id="customers-table" style="display: none;">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Phone</th>
+                                    <th>Points</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="customers-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PRODUCTS TAB -->
+        <div id="products" class="tab-content">
+            <div class="alert" id="products-alert"></div>
+            <div class="content-section">
+                <div class="form-section">
+                    <h3>➕ Add Product</h3>
+                    <form id="products-form">
+                        <div class="form-group">
+                            <label>Product Name *</label>
+                            <input type="text" id="prod-name" placeholder="Book title" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Available Qty</label>
+                            <input type="number" id="prod-qty" placeholder="50" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Price</label>
+                            <input type="number" id="prod-price" placeholder="100000" min="0" step="1000">
+                        </div>
+                        <div class="btn-group">
+                            <button type="submit">➕ Add</button>
+                            <button type="button" onclick="clearForm('products-form')">Clear</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="table-section">
+                    <h3>📦 All Products</h3>
+                    <div class="search-box">
+                        <input type="text" id="products-search" placeholder="Search..." onkeyup="filterTable('products')">
+                    </div>
+                    <div id="products-loading" class="loading"><div class="spinner"></div></div>
+                    <div class="table-wrapper">
+                        <table id="products-table" style="display: none;">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Available</th>
+                                    <th>Price</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="products-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BORROWING TAB -->
+        <div id="borrowing" class="tab-content">
+            <div class="alert" id="borrowing-alert"></div>
+            <div class="table-section" style="padding: 20px;">
+                <h3>📖 Borrowing Records</h3>
+                <div class="search-box">
+                    <input type="text" id="borrowing-search" placeholder="Search..." onkeyup="filterTable('borrowing')">
+                </div>
+                <div id="borrowing-loading" class="loading"><div class="spinner"></div></div>
+                <div class="table-wrapper">
+                    <table id="borrowing-table" style="display: none;">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Customer</th>
+                                <th>Product</th>
+                                <th>Date</th>
+                                <th>Due Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="borrowing-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- RENTAL TAB -->
+        <div id="rental" class="tab-content">
+            <div class="alert" id="rental-alert"></div>
+            <div class="table-section" style="padding: 20px;">
+                <h3>💳 Rental Records</h3>
+                <div class="search-box">
+                    <input type="text" id="rental-search" placeholder="Search..." onkeyup="filterTable('rental')">
+                </div>
+                <div id="rental-loading" class="loading"><div class="spinner"></div></div>
+                <div class="table-wrapper">
+                    <table id="rental-table" style="display: none;">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Customer</th>
+                                <th>Product</th>
+                                <th>Rent Date</th>
+                                <th>Return Date</th>
+                                <th>Price</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rental-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+        let token = localStorage.getItem('token');
+        let currentUser = JSON.parse(localStorage.getItem('user'));
+
+        // Check authentication
+        window.addEventListener('load', () => {
+            if (!token || currentUser.role !== 'Admin') {
+                window.location.href = '/login.html';
+                return;
+            }
+            
+            document.getElementById('userDisplay').textContent = `👤 ${currentUser.username}`;
+            loadStats();
+            loadEmployees();
+        });
+
+        function getAuthHeader() {
+            return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+        }
+
+        function switchTab(tab, event) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(tab).classList.add('active');
+            
+            setTimeout(() => {
+                if (tab === 'employees') loadEmployees();
+                else if (tab === 'customers') loadCustomers();
+                else if (tab === 'products') loadProducts();
+                else if (tab === 'borrowing') loadBorrowing();
+                else if (tab === 'rental') loadRental();
+            }, 100);
+        }
+
+        async function loadStats() {
+            try {
+                const res = await fetch(`${API_URL}/stats`, { headers: getAuthHeader() });
+                const data = await res.json();
+                document.getElementById('stat-employees').textContent = data.employees || 0;
+                document.getElementById('stat-customers').textContent = data.customers || 0;
+                document.getElementById('stat-products').textContent = data.products || 0;
+                document.getElementById('stat-orders').textContent = data.orders || 0;
+            } catch (e) {
+                console.error('Stats error:', e);
+            }
+        }
+
+        function showAlert(id, msg, type) {
+            const alert = document.getElementById(id);
+            alert.textContent = msg;
+            alert.className = `alert ${type}`;
+            setTimeout(() => alert.className = 'alert', 5000);
+        }
+
+        // EMPLOYEES
+        async function loadEmployees() {
+            try {
+                const res = await fetch(`${API_URL}/employees`, { headers: getAuthHeader() });
+                const emps = await res.json();
+                
+                const tbody = document.getElementById('employees-tbody');
+                tbody.innerHTML = '';
+                
+                emps.forEach(e => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${e.IDNhanVien}</td>
+                            <td>${e.Ho} ${e.Ten}</td>
+                            <td>${e.CongViec || '-'}</td>
+                            <td>${e.SDT || '-'}</td>
+                            <td><button class="delete-btn" onclick="deleteEmp('${e.IDNhanVien}')">Delete</button></td>
+                        </tr>
+                    `;
+                });
+                
+                document.getElementById('employees-loading').style.display = 'none';
+                document.getElementById('employees-table').style.display = 'table';
+            } catch (e) {
+                showAlert('employees-alert', 'Error loading employees', 'error');
+            }
+        }
+
+        document.getElementById('employees-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                const res = await fetch(`${API_URL}/employees`, {
+                    method: 'POST',
+                    headers: getAuthHeader(),
+                    body: JSON.stringify({
+                        CMND_CCCD: document.getElementById('emp-cmnd').value,
+                        Ho: document.getElementById('emp-ho').value,
+                        Ten: document.getElementById('emp-ten').value,
+                        SDT: document.getElementById('emp-phone').value,
+                        CongViec: document.getElementById('emp-job').value,
+                        BoPhanQuanLy: document.getElementById('emp-dept').value
+                    })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showAlert('employees-alert', `✅ Employee ${data.IDNhanVien} added!`, 'success');
+                    clearForm('employees-form');
+                    loadEmployees();
+                    loadStats();
+                } else {
+                    showAlert('employees-alert', data.error, 'error');
+                }
+            } catch (e) {
+                showAlert('employees-alert', 'Error: ' + e, 'error');
+            }
+        });
+
+        async function deleteEmp(id) {
+            if (!confirm(`Delete employee ${id}?`)) return;
+            try {
+                const res = await fetch(`${API_URL}/employees/${id}`, {
+                    method: 'DELETE',
+                    headers: getAuthHeader()
+                });
+                if (res.ok) {
+                    showAlert('employees-alert', 'Employee deleted!', 'success');
+                    loadEmployees();
+                    loadStats();
+                }
+            } catch (e) {
+                showAlert('employees-alert', 'Error: ' + e, 'error');
+            }
+        }
+
+        // CUSTOMERS
+        async function loadCustomers() {
+            try {
+                const res = await fetch(`${API_URL}/customers`, { headers: getAuthHeader() });
+                const custs = await res.json();
+                
+                const tbody = document.getElementById('customers-tbody');
+                tbody.innerHTML = '';
+                
+                custs.forEach(c => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${c.IDKhachHang}</td>
+                            <td>${c.SDT || '-'}</td>
+                            <td>${c.DiemTichLuy || 0}</td>
+                            <td><button class="delete-btn" onclick="deleteCust('${c.IDKhachHang}')">Delete</button></td>
+                        </tr>
+                    `;
+                });
+                
+                document.getElementById('customers-loading').style.display = 'none';
+                document.getElementById('customers-table').style.display = 'table';
+            } catch (e) {
+                showAlert('customers-alert', 'Error loading customers', 'error');
+            }
+        }
+
+        document.getElementById('customers-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                const res = await fetch(`${API_URL}/customers`, {
+                    method: 'POST',
+                    headers: getAuthHeader(),
+                    body: JSON.stringify({
+                        SDT: document.getElementById('cust-phone').value,
+                        DiemTichLuy: parseInt(document.getElementById('cust-points').value) || 0
+                    })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showAlert('customers-alert', `✅ Customer ${data.IDKhachHang} added!`, 'success');
+                    clearForm('customers-form');
+                    loadCustomers();
+                    loadStats();
+                }
+            } catch (e) {
+                showAlert('customers-alert', 'Error: ' + e, 'error');
+            }
+        });
+
+        async function deleteCust(id) {
+            if (!confirm(`Delete customer ${id}?`)) return;
+            try {
+                const res = await fetch(`${API_URL}/customers/${id}`, {
+                    method: 'DELETE',
+                    headers: getAuthHeader()
+                });
+                if (res.ok) {
+                    showAlert('customers-alert', 'Customer deleted!', 'success');
+                    loadCustomers();
+                    loadStats();
+                }
+            } catch (e) {
+                showAlert('customers-alert', 'Error: ' + e, 'error');
+            }
+        }
+
+        // PRODUCTS
+        async function loadProducts() {
+            try {
+                const res = await fetch(`${API_URL}/products`, { headers: getAuthHeader() });
+                const prods = await res.json();
+                
+                const tbody = document.getElementById('products-tbody');
+                tbody.innerHTML = '';
+                
+                prods.forEach(p => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${p.IDVatPham}</td>
+                            <td>${p.TenVatPham}</td>
+                            <td>${p.SoLuongKhaDung || 0}</td>
+                            <td>${(p.GiaNiemYet || 0).toLocaleString('vi-VN')} ₫</td>
+                            <td><button class="delete-btn" onclick="deleteProd(${p.IDVatPham})">Delete</button></td>
+                        </tr>
+                    `;
+                });
+                
+                document.getElementById('products-loading').style.display = 'none';
+                document.getElementById('products-table').style.display = 'table';
+            } catch (e) {
+                showAlert('products-alert', 'Error loading products', 'error');
+            }
+        }
+
+        document.getElementById('products-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                const res = await fetch(`${API_URL}/products`, {
+                    method: 'POST',
+                    headers: getAuthHeader(),
+                    body: JSON.stringify({
+                        TenVatPham: document.getElementById('prod-name').value,
+                        SoLuongKhaDung: parseInt(document.getElementById('prod-qty').value) || 0,
+                        GiaNiemYet: parseFloat(document.getElementById('prod-price').value) || 0
+                    })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showAlert('products-alert', `✅ Product ${data.IDVatPham} added!`, 'success');
+                    clearForm('products-form');
+                    loadProducts();
+                    loadStats();
+                }
+            } catch (e) {
+                showAlert('products-alert', 'Error: ' + e, 'error');
+            }
+        });
+
+        async function deleteProd(id) {
+            if (!confirm(`Delete product ${id}?`)) return;
+            try {
+                const res = await fetch(`${API_URL}/products/${id}`, {
+                    method: 'DELETE',
+                    headers: getAuthHeader()
+                });
+                if (res.ok) {
+                    showAlert('products-alert', 'Product deleted!', 'success');
+                    loadProducts();
+                    loadStats();
+                }
+            } catch (e) {
+                showAlert('products-alert', 'Error: ' + e, 'error');
+            }
+        }
+
+        // BORROWING
+        async function loadBorrowing() {
+            try {
+                const res = await fetch(`${API_URL}/borrowing`, { headers: getAuthHeader() });
+                const items = await res.json();
+                
+                const tbody = document.getElementById('borrowing-tbody');
+                tbody.innerHTML = '';
+                
+                items.forEach(item => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${item.MaDonMuon || '-'}</td>
+                            <td>${item.IDKhachHang}</td>
+                            <td>${item.TenVatPham}</td>
+                            <td>${item.NgayMuon}</td>
+                            <td>${item.HanTra || '-'}</td>
+                            <td>${item.TinhTrangSauKhiTra || '-'}</td>
+                        </tr>
+                    `;
+                });
+                
+                if (items.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: #999;">No borrowing records</td></tr>';
+                }
+                
+                document.getElementById('borrowing-loading').style.display = 'none';
+                document.getElementById('borrowing-table').style.display = 'table';
+            } catch (e) {
+                showAlert('borrowing-alert', 'Error loading borrowing', 'error');
+            }
+        }
+
+        // RENTAL
+        async function loadRental() {
+            try {
+                const res = await fetch(`${API_URL}/rentals`, { headers: getAuthHeader() });
+                const items = await res.json();
+                
+                const tbody = document.getElementById('rental-tbody');
+                tbody.innerHTML = '';
+                
+                items.forEach(item => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${item.MaDonThue || '-'}</td>
+                            <td>${item.IDKhachHang}</td>
+                            <td>${item.TenVatPham}</td>
+                            <td>${item.NgayThue}</td>
+                            <td>${item.NgayTra || '-'}</td>
+                            <td>${(item.GiaThue || 0).toLocaleString('vi-VN')} ₫</td>
+                        </tr>
+                    `;
+                });
+                
+                if (items.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: #999;">No rental records</td></tr>';
+                }
+                
+                document.getElementById('rental-loading').style.display = 'none';
+                document.getElementById('rental-table').style.display = 'table';
+            } catch (e) {
+                showAlert('rental-alert', 'Error loading rentals', 'error');
+            }
+        }
+
+        // UTILITIES
+        function clearForm(id) {
+            document.getElementById(id).reset();
+        }
+
+        function filterTable(tab) {
+            const search = document.getElementById(`${tab}-search`).value.toLowerCase();
+            const rows = document.querySelectorAll(`#${tab}-tbody tr`);
+            rows.forEach(row => {
+                row.style.display = row.textContent.toLowerCase().includes(search) ? '' : 'none';
+            });
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/login.html';
+        }
+    </script>
+</body>
+</html>
