@@ -148,9 +148,9 @@ CREATE TABLE IF NOT EXISTS VanPhongPham (
 -- 15. Bản Copy (Khóa hợp phần)
 CREATE TABLE IF NOT EXISTS BanCopy (
     IDVatPham INT,
-    MaBanCopy VARCHAR(20), -- Backend tính mã: BC001
+    MaSoBanCopy VARCHAR(20), -- Backend tính mã: BC001
     TinhTrang VARCHAR(50),
-    PRIMARY KEY (IDVatPham, MaBanCopy),
+    PRIMARY KEY (IDVatPham, MaSoBanCopy),
     FOREIGN KEY (IDVatPham) REFERENCES Sach(IDVatPham) ON DELETE CASCADE
 );
 
@@ -224,7 +224,7 @@ CREATE TABLE IF NOT EXISTS LanMuon (
     NgayMuon DATE,
     HanTra DATE,
     PRIMARY KEY (IDVatPham, MaSoBanCopy, CCCD_CMND, MaThe, MaDonMuon),
-    FOREIGN KEY (IDVatPham, MaSoBanCopy) REFERENCES BanCopy(IDVatPham, MaBanCopy) ON DELETE CASCADE,
+    FOREIGN KEY (IDVatPham, MaSoBanCopy) REFERENCES BanCopy(IDVatPham, MaSoBanCopy) ON DELETE CASCADE,
     FOREIGN KEY (CCCD_CMND, MaThe) REFERENCES TheThanhVien(CCCD_CMND, MaThe) ON DELETE CASCADE
 );
 

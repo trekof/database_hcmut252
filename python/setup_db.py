@@ -102,6 +102,7 @@ if __name__ == "__main__":
     run_routine_file(os.path.join(sql_dir, "04_procedures.sql"))
     run_routine_file(os.path.join(sql_dir, "05_triggers.sql"))
     run_routine_file(os.path.join(sql_dir, "06_functions.sql"))
+    run_sql_file(os.path.join(sql_dir, "07_init_users.sql"))
     
     print()
     print("✓ Database setup completed!")

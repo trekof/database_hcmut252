@@ -9,7 +9,7 @@ from flask_cors import CORS
 import mysql.connector
 from dotenv import load_dotenv
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import re
 import jwt
 import json
@@ -122,7 +122,30 @@ def require_role(*roles):
             return f(*args, **kwargs)
         return decorated_function
     return decorator
-
+def convert_decimal_and_dates(rows):
+    """Convert Decimal and Date objects to strings/floats for JSON serialization"""
+    from decimal import Decimal
+    if not rows:
+        return rows
+    if isinstance(rows, list):
+        for row in rows:
+            if isinstance(row, dict):
+                for key, value in row.items():
+                    if isinstance(value, Decimal):
+                        row[key] = float(value)
+                    elif isinstance(value, date) and not isinstance(value, datetime):
+                        row[key] = str(value)
+                    elif isinstance(value, datetime):
+                        row[key] = value.isoformat()
+    elif isinstance(rows, dict):
+        for key, value in rows.items():
+            if isinstance(value, Decimal):
+                rows[key] = float(value)
+            elif isinstance(value, date) and not isinstance(value, datetime):
+                rows[key] = str(value)
+            elif isinstance(value, datetime):
+                rows[key] = value.isoformat()
+    return rows
 # ==================== ID GENERATION HELPERS ====================
 
 def generate_next_id(prefix, table_name, id_column):
@@ -589,25 +612,36 @@ def get_borrowing():
         
         if request.user['role'] == 'KhachHang':
             # Customer sees only their own borrowing
+            # 1. Find customer's CCCD from CaNhan table
             customer_id = request.user['reference_id']
-            cur.execute("""
-                SELECT l.*, vp.TenVatPham
-                FROM LanMuon l
-                JOIN VatPham vp ON l.IDVatPham = vp.IDVatPham
-                WHERE l.IDKhachHang=%s
-                ORDER BY l.NgayMuon DESC
-            """, (customer_id,))
+            cur.execute("SELECT CCCD_CMND FROM CaNhan WHERE IDKhachHang = %s", (customer_id,))
+            ca_nhan = cur.fetchone()
+            
+            if not ca_nhan:
+                borrowings = []
+            else:
+                cccd = ca_nhan['CCCD_CMND']
+                # 2. Query LanMuon using CCCD_CMND
+                cur.execute("""
+                    SELECT l.*, vp.TenVatPham
+                    FROM LanMuon l
+                    JOIN VatPham vp ON l.IDVatPham = vp.IDVatPham
+                    WHERE l.CCCD_CMND=%s
+                    ORDER BY l.NgayMuon DESC
+                """, (cccd,))
+                borrowings = cur.fetchall()
         else:
-            # Admin/Staff see all
+            # Admin/Staff see all - JOIN through CaNhan to get customer info
             cur.execute("""
-                SELECT l.*, vp.TenVatPham, kh.SDT
+                SELECT l.*, vp.TenVatPham, cn.Ho, cn.Ten
                 FROM LanMuon l
                 JOIN VatPham vp ON l.IDVatPham = vp.IDVatPham
-                JOIN KhachHang kh ON l.IDKhachHang = kh.IDKhachHang
+                JOIN CaNhan cn ON l.CCCD_CMND = cn.CCCD_CMND
                 ORDER BY l.NgayMuon DESC
             """)
+            borrowings = cur.fetchall()
         
-        borrowings = cur.fetchall()
+        borrowings = convert_decimal_and_dates(borrowings)
         cur.close()
         conn.close()
         return jsonify(borrowings), 200
@@ -643,6 +677,7 @@ def get_rentals():
             """)
         
         rentals = cur.fetchall()
+        rentals = convert_decimal_and_dates(rentals)
         cur.close()
         conn.close()
         return jsonify(rentals), 200
@@ -674,13 +709,26 @@ def get_stats():
             
             cur.execute("SELECT COUNT(*) as count FROM DonMuaHang")
             stats['orders'] = cur.fetchone()['count']
+            
+            cur.execute("SELECT COUNT(*) as count FROM LanMuon")
+            stats['borrowing'] = cur.fetchone()['count']
+            
+            cur.execute("SELECT COUNT(*) as count FROM LanThue")
+            stats['rentals'] = cur.fetchone()['count']
         
         elif request.user['role'] == 'KhachHang':
             # Customer sees their own stats
             customer_id = request.user['reference_id']
             
-            cur.execute("SELECT COUNT(*) as count FROM LanMuon WHERE IDKhachHang=%s", (customer_id,))
-            stats['my_borrowing'] = cur.fetchone()['count']
+            # Get CCCD from CaNhan to query LanMuon
+            cur.execute("SELECT CCCD_CMND FROM CaNhan WHERE IDKhachHang = %s", (customer_id,))
+            ca_nhan = cur.fetchone()
+            if ca_nhan:
+                cccd = ca_nhan['CCCD_CMND']
+                cur.execute("SELECT COUNT(*) as count FROM LanMuon WHERE CCCD_CMND=%s", (cccd,))
+                stats['my_borrowing'] = cur.fetchone()['count']
+            else:
+                stats['my_borrowing'] = 0
             
             cur.execute("SELECT COUNT(*) as count FROM LanThue WHERE IDKhachHang=%s", (customer_id,))
             stats['my_rentals'] = cur.fetchone()['count']

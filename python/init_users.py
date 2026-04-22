@@ -15,7 +15,7 @@ load_dotenv()
 DB_HOST = os.getenv('MYSQL_HOST', 'localhost')
 DB_USER = os.getenv('MYSQL_USER', 'root')
 DB_PASSWORD = os.getenv('MYSQL_PASSWORD', 'password')
-DB_NAME = os.getenv('MYSQL_DB', 'ql_thu_vien')
+DB_NAME = os.getenv('MYSQL_DB', 'btl2_db')
 
 def hash_password(password):
     """Hash password using SHA256"""

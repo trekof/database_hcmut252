@@ -101,8 +101,8 @@ INSERT INTO VanPhongPham (IDVatPham, LoaiHang, HSX) VALUES
 (11, 'Giấy in', 'Sao Thái'),
 (12, 'Bìa hồ sơ', 'Hàng Việt');
 
--- Thêm Bản Copy (Backend generate MaBanCopy: BC001, BC002, ...)
-INSERT INTO BanCopy (IDVatPham, MaBanCopy, TinhTrang) VALUES
+-- Thêm Bản Copy (Backend generate MaSoBanCopy: BC001, BC002, ...)
+INSERT INTO BanCopy (IDVatPham, MaSoBanCopy, TinhTrang) VALUES
 (1, 'BC001', 'Tốt'),
 (1, 'BC002', 'Tốt'),
 (2, 'BC003', 'Tốt'),
