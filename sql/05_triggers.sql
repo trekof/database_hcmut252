@@ -60,3 +60,87 @@ BEGIN
         SET MESSAGE_TEXT = 'Lỗi: Thời gian giảm giá bị chồng chéo với một đợt đã tồn tại!';
     END IF;
 END;
+
+-- Trigger: Khi cập nhật LanMuon (trả), nếu bị hư/mất thì tạo bồi thường
+CREATE TRIGGER tr_on_lanmuon_after_update
+AFTER UPDATE ON LanMuon
+FOR EACH ROW
+BEGIN
+    -- If status changed to Hư or Mất
+    IF NEW.TinhTrangSauKhiTra IN ('Hư', 'Mất') AND OLD.TinhTrangSauKhiTra NOT IN ('Hư','Mất') THEN
+        DECLARE v_price DECIMAL(15,2);
+        DECLARE v_multiplier DECIMAL(4,2);
+        -- Get price
+        SELECT GiaNiemYet INTO v_price FROM VatPham WHERE IDVatPham = NEW.IDVatPham;
+        IF v_price IS NULL THEN
+            SET v_price = 0;
+        END IF;
+        -- Simple rule: Hư = 120% , Mất = 150%
+        IF NEW.TinhTrangSauKhiTra = 'Hư' THEN
+            SET v_multiplier = 1.2;
+        ELSE
+            SET v_multiplier = 1.5;
+        END IF;
+        INSERT INTO BoThuong (IDVatPham, MaSoBanCopy, CCCD_CMND, MaDonMuon, SoTien, LyDo)
+        VALUES (NEW.IDVatPham, NEW.MaSoBanCopy, NEW.CCCD_CMND, NEW.MaDonMuon, v_price * v_multiplier, CONCAT('Bồi thường do trả: ', NEW.TinhTrangSauKhiTra));
+    END IF;
+END;
+
+-- Trigger: Khi thêm LanMuon hoặc LanThue (đã phần lớn xử lý trong procedure), nhưng kiểm tra khóa khách hàng
+CREATE TRIGGER tr_check_khachhang_locked_before_lanmuon
+BEFORE INSERT ON LanMuon
+FOR EACH ROW
+BEGIN
+    DECLARE v_locked DATETIME;
+    SELECT LockedUntil INTO v_locked FROM KhachHangKhoa WHERE IDKhachHang = (SELECT IDKhachHang FROM CaNhan WHERE CCCD_CMND = NEW.CCCD_CMND);
+    IF v_locked IS NOT NULL AND v_locked >= NEW.NgayMuon THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Khách hàng đang bị khóa, không thể mượn';
+    END IF;
+END;
+
+-- Trigger: Khi insert DonMuaHang, cập nhật điểm tích lũy nếu đủ doanh thu 5,000,000 trong năm
+CREATE TRIGGER tr_after_insert_donmuahang
+AFTER INSERT ON DonMuaHang
+FOR EACH ROW
+BEGIN
+    DECLARE v_total_year DECIMAL(15,2);
+    SELECT SUM(COALESCE(ct.SoLuong * ct.GiaLucMua,0)) INTO v_total_year
+    FROM DonMuaHang d
+    LEFT JOIN DonHangChiTiet ct ON d.IDDonMuaHang = ct.IDDonMuaHang
+    WHERE d.IDKhachHang = NEW.IDKhachHang
+      AND YEAR(d.NgayMua) = YEAR(NEW.NgayMua);
+
+    IF v_total_year >= 5000000 THEN
+        -- Increment DiemTichLuy by 100 as a priority upgrade marker (policy placeholder)
+        UPDATE KhachHang SET DiemTichLuy = DiemTichLuy + 100 WHERE IDKhachHang = NEW.IDKhachHang;
+    END IF;
+END;
+
+-- Trigger: Khi update LanMuon, xét trả trễ để khóa nếu 3 lần trễ trong 6 tháng
+CREATE TRIGGER tr_check_late_returns_after_update
+AFTER UPDATE ON LanMuon
+FOR EACH ROW
+BEGIN
+    DECLARE v_late_count INT;
+    DECLARE v_idKhach VARCHAR(20);
+    -- Only consider when NgayTra updated
+    IF NEW.NgayTra IS NOT NULL AND OLD.NgayTra IS NULL THEN
+        IF NEW.NgayTra > NEW.HanTra THEN
+            -- Get customer id
+            SELECT IDKhachHang INTO v_idKhach FROM CaNhan WHERE CCCD_CMND = NEW.CCCD_CMND;
+            IF v_idKhach IS NOT NULL THEN
+                SELECT COUNT(*) INTO v_late_count FROM LanMuon
+                WHERE CCCD_CMND = NEW.CCCD_CMND
+                  AND NgayTra > HanTra
+                  AND NgayTra >= DATE_SUB(NEW.NgayTra, INTERVAL 6 MONTH);
+
+                IF v_late_count >= 3 THEN
+                    -- Lock customer for 30 days
+                    INSERT INTO KhachHangKhoa (IDKhachHang, LockedUntil, Reason)
+                    VALUES (v_idKhach, DATE_ADD(NEW.NgayTra, INTERVAL 30 DAY), '3 trả trễ trong 6 tháng')
+                    ON DUPLICATE KEY UPDATE LockedUntil = DATE_ADD(NEW.NgayTra, INTERVAL 30 DAY), Reason = '3 trả trễ trong 6 tháng';
+                END IF;
+            END IF;
+        END IF;
+    END IF;
+END;

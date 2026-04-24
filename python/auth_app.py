@@ -38,35 +38,8 @@ def get_db_connection():
 
 # ==================== AUTH HELPERS ====================
 
-def create_users_table():
-    """Create Users table if it doesn't exist"""
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS Users (
-                IDUser INT AUTO_INCREMENT PRIMARY KEY,
-                Username VARCHAR(50) UNIQUE NOT NULL,
-                Password VARCHAR(255) NOT NULL,
-                Role ENUM('Admin', 'NhanVienDungQuay', 'KhachHang') NOT NULL,
-                ReferenceID VARCHAR(20),
-                IsActive BOOLEAN DEFAULT TRUE,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                INDEX (Username),
-                INDEX (ReferenceID)
-            )
-        """)
-        
-        conn.commit()
-        cur.close()
-        conn.close()
-        print("Users table created successfully")
-    except Exception as e:
-        print(f"Error creating users table: {e}")
-
-# Create users table on startup
-create_users_table()
+# Note: Users table and demo users are created via SQL files in /sql.
+# The application no longer creates schema objects at runtime.
 
 def generate_token(user_id, username, role, reference_id):
     """Generate JWT token"""
@@ -240,6 +213,58 @@ def register():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
+@app.route('/api/employees/<id>/dependents', methods=['GET'])
+@require_role('Admin')
+def get_employee_dependents(id):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT * FROM NguoiPhuThuoc WHERE IDNhanVien=%s", (id,))
+        deps = cur.fetchall()
+        cur.close()
+        conn.close()
+        return jsonify(deps), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/employees/<id>/dependents', methods=['POST'])
+@require_role('Admin')
+def add_employee_dependent(id):
+    try:
+        data = request.json
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("INSERT INTO NguoiPhuThuoc (IDNhanVien, CMND_CCCD, Quan_He, Ho, Ten) VALUES (%s,%s,%s,%s,%s)", (
+            id,
+            data['CMND_CCCD'],
+            data.get('Quan_He'),
+            data.get('Ho'),
+            data.get('Ten')
+        ))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({"message": "Dependent added"}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/employees/<id>/dependents/<cmnd>', methods=['DELETE'])
+@require_role('Admin')
+def delete_employee_dependent(id, cmnd):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM NguoiPhuThuoc WHERE IDNhanVien=%s AND CMND_CCCD=%s", (id, cmnd))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({"message": "Dependent removed"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/auth/login', methods=['POST'])
 def login():
     """Login user"""
@@ -332,22 +357,35 @@ def create_employee():
         emp_id = generate_next_id('NV', 'NhanVien', 'IDNhanVien')
         if not emp_id:
             return jsonify({"error": "Failed to generate employee ID"}), 500
-        
+        # If an IDQuanLy (manager) is provided, fetch their CongViec to set BoPhanQuanLy
+        bo_phan = data.get('BoPhanQuanLy')
+        id_quan_ly = data.get('IDQuanLy')
+        gioi_tinh = data.get('GioiTinh')
+        ngay_sinh = data.get('NgaySinh')
+
+        if id_quan_ly:
+            cur.execute("SELECT CongViec FROM NhanVien WHERE IDNhanVien=%s", (id_quan_ly,))
+            mgr = cur.fetchone()
+            if mgr:
+                bo_phan = mgr[0]
+
         query = """
             INSERT INTO NhanVien 
-            (IDNhanVien, CMND_CCCD, Ho, Ten, NgaySinh, SDT, CongViec, BoPhanQuanLy)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            (IDNhanVien, CMND_CCCD, Ho, Ten, NgaySinh, SDT, CongViec, GioiTinh, BoPhanQuanLy, IDQuanLy)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
-        
+
         cur.execute(query, (
             emp_id,
             data['CMND_CCCD'],
             data.get('Ho'),
             data.get('Ten'),
-            data.get('NgaySinh'),
+            ngay_sinh,
             data.get('SDT'),
             data.get('CongViec'),
-            data.get('BoPhanQuanLy')
+            gioi_tinh,
+            bo_phan,
+            id_quan_ly
         ))
         
         conn.commit()
@@ -387,8 +425,32 @@ def get_customers():
     try:
         conn = get_db_connection()
         cur = conn.cursor(dictionary=True)
-        cur.execute("SELECT * FROM KhachHang ORDER BY IDKhachHang")
-        customers = cur.fetchall()
+        cur.execute("SELECT k.*, c.CCCD_CMND, c.Ho, c.Ten, d.DiaChi, t.MaSoThue, t.TenCongTy FROM KhachHang k LEFT JOIN CaNhan c ON k.IDKhachHang=c.IDKhachHang LEFT JOIN DiaChiCaNhan d ON c.CCCD_CMND=d.CCCD_CMND LEFT JOIN TapTheCongTy t ON k.IDKhachHang=t.IDKhachHang ORDER BY k.IDKhachHang")
+        rows = cur.fetchall()
+        customers = []
+        for r in rows:
+            cust = dict(r)
+            # determine type
+            if r.get('CCCD_CMND'):
+                cust['type'] = 'CaNhan'
+                cust['Ho'] = r.get('Ho')
+                cust['Ten'] = r.get('Ten')
+                cust['CCCD_CMND'] = r.get('CCCD_CMND')
+                cust['DiaChi'] = r.get('DiaChi')
+            elif r.get('MaSoThue'):
+                cust['type'] = 'TapTheCongTy'
+                cust['MaSoThue'] = r.get('MaSoThue')
+                cust['TenCongTy'] = r.get('TenCongTy')
+            else:
+                cust['type'] = 'Unknown'
+
+            # Mask SDT for staff role
+            if request.user['role'] == 'NhanVienDungQuay' and cust.get('SDT'):
+                s = cust.get('SDT')
+                if len(s) > 3:
+                    cust['SDT'] = '*' * (len(s) - 3) + s[-3:]
+
+            customers.append(cust)
         cur.close()
         conn.close()
         return jsonify(customers), 200
@@ -403,13 +465,31 @@ def get_my_profile():
         customer_id = request.user['reference_id']
         conn = get_db_connection()
         cur = conn.cursor(dictionary=True)
-        cur.execute("SELECT * FROM KhachHang WHERE IDKhachHang=%s", (customer_id,))
+        cur.execute("SELECT k.*, c.CCCD_CMND, c.Ho, c.Ten, d.DiaChi FROM KhachHang k LEFT JOIN CaNhan c ON k.IDKhachHang=c.IDKhachHang LEFT JOIN DiaChiCaNhan d ON c.CCCD_CMND=d.CCCD_CMND WHERE k.IDKhachHang=%s", (customer_id,))
         customer = cur.fetchone()
         cur.close()
         conn.close()
         
         if not customer:
             return jsonify({"error": "Customer not found"}), 404
+        # annotate type
+        if customer.get('CCCD_CMND'):
+            customer['type'] = 'CaNhan'
+        else:
+            # check for company
+            # need separate connection to check TapTheCongTy
+            conn2 = get_db_connection()
+            cur2 = conn2.cursor()
+            cur2.execute("SELECT MaSoThue, TenCongTy FROM TapTheCongTy WHERE IDKhachHang=%s", (customer_id,))
+            t = cur2.fetchone()
+            cur2.close(); conn2.close()
+            if t:
+                customer['type'] = 'TapTheCongTy'
+                customer['MaSoThue'] = t[0]
+                customer['TenCongTy'] = t[1]
+            else:
+                customer['type'] = 'Unknown'
+
         return jsonify(customer), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -421,14 +501,28 @@ def get_customer(id):
     try:
         conn = get_db_connection()
         cur = conn.cursor(dictionary=True)
-        cur.execute("SELECT * FROM KhachHang WHERE IDKhachHang = %s", (id,))
+        cur.execute("SELECT k.*, c.CCCD_CMND, c.Ho, c.Ten, d.DiaChi, t.MaSoThue, t.TenCongTy FROM KhachHang k LEFT JOIN CaNhan c ON k.IDKhachHang=c.IDKhachHang LEFT JOIN DiaChiCaNhan d ON c.CCCD_CMND=d.CCCD_CMND LEFT JOIN TapTheCongTy t ON k.IDKhachHang=t.IDKhachHang WHERE k.IDKhachHang = %s", (id,))
         customer = cur.fetchone()
         cur.close()
         conn.close()
         
         if not customer:
             return jsonify({"error": "Customer not found"}), 404
-        return jsonify(customer), 200
+        cust = dict(customer)
+        if customer.get('CCCD_CMND'):
+            cust['type'] = 'CaNhan'
+        elif customer.get('MaSoThue'):
+            cust['type'] = 'TapTheCongTy'
+        else:
+            cust['type'] = 'Unknown'
+
+        # Mask SDT for staff role
+        if request.user['role'] == 'NhanVienDungQuay' and cust.get('SDT'):
+            s = cust.get('SDT')
+            if len(s) > 3:
+                cust['SDT'] = '*' * (len(s) - 3) + s[-3:]
+
+        return jsonify(cust), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -456,6 +550,31 @@ def create_customer():
             data.get('SDT'),
             data.get('DiemTichLuy', 0)
         ))
+
+        # If personal info provided, insert into CaNhan and DiaChiCaNhan
+        cccd = data.get('CCCD_CMND') or data.get('CCCD')
+        ho = data.get('Ho')
+        ten = data.get('Ten')
+        diachi = data.get('DiaChi') or data.get('DiaChiCaNhan')
+
+        if cccd and (ho or ten):
+            try:
+                cur.execute("""
+                    INSERT INTO CaNhan (CCCD_CMND, IDKhachHang, Ho, Ten)
+                    VALUES (%s, %s, %s, %s)
+                """, (cccd, customer_id, ho, ten))
+            except Exception:
+                # ignore duplicates or issues here; caller can re-run updates
+                pass
+
+        if cccd and diachi:
+            try:
+                cur.execute("""
+                    INSERT INTO DiaChiCaNhan (CCCD_CMND, DiaChi)
+                    VALUES (%s, %s)
+                """, (cccd, diachi))
+            except Exception:
+                pass
         
         conn.commit()
         cur.close()
@@ -466,6 +585,191 @@ def create_customer():
             "IDKhachHang": customer_id
         }), 201
     except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/customers/me', methods=['PATCH'])
+@require_role('KhachHang')
+def update_my_profile():
+    """Allow customers to update their own profile (SDT, name, CCCD, address)"""
+    try:
+        data = request.json
+        customer_id = request.user['reference_id']
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        # Update KhachHang.SDT or DiemTichLuy if provided
+        if 'SDT' in data or 'DiemTichLuy' in data:
+            fields = []
+            params = []
+            if 'SDT' in data:
+                fields.append('SDT=%s')
+                params.append(data.get('SDT'))
+            if 'DiemTichLuy' in data:
+                fields.append('DiemTichLuy=%s')
+                params.append(data.get('DiemTichLuy'))
+            params.append(customer_id)
+            cur.execute(f"UPDATE KhachHang SET {', '.join(fields)} WHERE IDKhachHang=%s", tuple(params))
+
+        # Handle CaNhan (personal info)
+        # Find existing CCCD for this customer if any
+        cur.execute("SELECT CCCD_CMND FROM CaNhan WHERE IDKhachHang=%s", (customer_id,))
+        existing = cur.fetchone()
+        existing_cccd = existing[0] if existing else None
+
+        new_cccd = data.get('CCCD_CMND') or data.get('CCCD')
+        ho = data.get('Ho')
+        ten = data.get('Ten')
+        diachi = data.get('DiaChi') or data.get('DiaChiCaNhan')
+
+        if existing_cccd and (ho or ten):
+            # update existing personal record
+            fields = []
+            params = []
+            if ho is not None:
+                fields.append('Ho=%s'); params.append(ho)
+            if ten is not None:
+                fields.append('Ten=%s'); params.append(ten)
+            params.append(existing_cccd)
+            cur.execute(f"UPDATE CaNhan SET {', '.join(fields)} WHERE CCCD_CMND=%s", tuple(params))
+        elif new_cccd and (ho or ten):
+            # insert new personal record
+            try:
+                cur.execute("INSERT INTO CaNhan (CCCD_CMND, IDKhachHang, Ho, Ten) VALUES (%s, %s, %s, %s)", (new_cccd, customer_id, ho, ten))
+            except Exception:
+                pass
+
+        # Address handling
+        target_cccd = new_cccd or existing_cccd
+        if target_cccd and diachi is not None:
+            # upsert DiaChiCaNhan
+            cur.execute("SELECT CCCD_CMND FROM DiaChiCaNhan WHERE CCCD_CMND=%s", (target_cccd,))
+            if cur.fetchone():
+                cur.execute("UPDATE DiaChiCaNhan SET DiaChi=%s WHERE CCCD_CMND=%s", (diachi, target_cccd))
+            else:
+                try:
+                    cur.execute("INSERT INTO DiaChiCaNhan (CCCD_CMND, DiaChi) VALUES (%s, %s)", (target_cccd, diachi))
+                except Exception:
+                    pass
+
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({"message": "Profile updated"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/orders', methods=['GET'])
+@require_auth
+def list_orders():
+    """List orders (customers see their own, staff/admin see all)"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+
+        if request.user['role'] == 'KhachHang':
+            customer_id = request.user['reference_id']
+            cur.execute("SELECT * FROM DonMuaHang WHERE IDKhachHang=%s ORDER BY NgayMua DESC", (customer_id,))
+        else:
+            cur.execute("SELECT * FROM DonMuaHang ORDER BY NgayMua DESC")
+
+        orders = cur.fetchall()
+        cur.close()
+        conn.close()
+        return jsonify(orders), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/orders/<int:order_id>', methods=['PATCH'])
+@require_role('Admin', 'NhanVienDungQuay')
+def update_order(order_id):
+    """Allow staff/admin to update order delivery status and assign staff"""
+    try:
+        data = request.json
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        # Update GiaoTanNha if exists
+        if 'TrangThai' in data or 'PhiVanChuyen' in data or 'IDNhanVien' in data:
+            # Ensure a GiaoTanNha row exists for this order
+            cur.execute("SELECT IDDonMuaHang FROM GiaoTanNha WHERE IDDonMuaHang=%s", (order_id,))
+            if not cur.fetchone():
+                # create a minimal record
+                cur.execute("INSERT INTO GiaoTanNha (IDDonMuaHang, TrangThai) VALUES (%s, %s)", (order_id, data.get('TrangThai', 'Pending')))
+
+            fields = []
+            params = []
+            if 'TrangThai' in data:
+                fields.append('TrangThai=%s'); params.append(data.get('TrangThai'))
+            if 'PhiVanChuyen' in data:
+                fields.append('PhiVanChuyen=%s'); params.append(data.get('PhiVanChuyen'))
+            if 'IDNhanVien' in data:
+                fields.append('IDNhanVien=%s'); params.append(data.get('IDNhanVien'))
+            params.append(order_id)
+            cur.execute(f"UPDATE GiaoTanNha SET {', '.join(fields)} WHERE IDDonMuaHang=%s", tuple(params))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({"message": "Order updated"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/orders', methods=['POST'])
+@require_auth
+def create_order():
+    """Create a new order. Customers create their own orders; Admin/Staff can create for any customer."""
+    try:
+        data = request.json
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        # Determine customer
+        if request.user['role'] == 'KhachHang':
+            id_khach = request.user['reference_id']
+        else:
+            id_khach = data.get('IDKhachHang')
+            if not id_khach:
+                return jsonify({"error": "IDKhachHang required for admin/staff orders"}), 400
+
+        loai = data.get('LoaiHoaDon', 'Hóa đơn')
+        ngay = data.get('NgayMua')
+        if not ngay:
+            from datetime import date
+            ngay = date.today().isoformat()
+
+        # Start transaction
+        cur.execute("INSERT INTO DonMuaHang (LoaiHoaDon, NgayMua, IDKhachHang) VALUES (%s, %s, %s)", (loai, ngay, id_khach))
+        order_id = cur.lastrowid
+
+        items = data.get('items', [])
+        if not items:
+            conn.rollback()
+            return jsonify({"error": "Order must include items"}), 400
+
+        for it in items:
+            cur.execute("INSERT INTO DonHangChiTiet (IDDonMuaHang, IDVatPham, SoLuong, GiaLucMua) VALUES (%s, %s, %s, %s)", (order_id, it['IDVatPham'], it['SoLuong'], it.get('GiaLucMua', 0)))
+
+        # If delivery requested
+        if data.get('isDelivery'):
+            diachi = data.get('DiaChiNhanHang')
+            trangthai = data.get('TrangThai', 'Chờ giao')
+            phivc = data.get('PhiVanChuyen', 0)
+            idnv = data.get('IDNhanVien')
+            cur.execute("INSERT INTO GiaoTanNha (IDDonMuaHang, DiaChiNhanHang, TrangThai, PhiVanChuyen, IDNhanVien) VALUES (%s, %s, %s, %s, %s)", (order_id, diachi, trangthai, phivc, idnv))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({"message": "Order created", "IDDonMuaHang": order_id}), 201
+    except Exception as e:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/customers/<id>', methods=['DELETE'])

@@ -383,12 +383,39 @@
                             <label>Phone</label>
                             <input type="tel" id="emp-phone" placeholder="0912345678">
                         </div>
+
+                        <div class="form-group">
+                            <label>Gender</label>
+                            <select id="emp-gender">
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Birthdate</label>
+                            <input type="date" id="emp-dob">
+                        </div>
+
                         <div class="form-group">
                             <label>Job Title</label>
-                            <input type="text" id="emp-job" placeholder="Nhân viên">
+                            <select id="emp-job">
+                                <option value="QuanTriVien">QuanTriVien</option>
+                                <option value="NhanVienDungQuay">NhanVienDungQuay</option>
+                                <option value="TaiXeChuyenHang">TaiXeChuyenHang</option>
+                                <option value="KeToan">KeToan</option>
+                                <option value="ThuNgan">ThuNgan</option>
+                            </select>
                         </div>
+
                         <div class="form-group">
-                            <label>Department</label>
+                            <label>Manager (ID)</label>
+                            <select id="emp-manager"><option value="">-- None --</option></select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Department (auto from manager)</label>
                             <input type="text" id="emp-dept" placeholder="Department">
                         </div>
                         <div class="btn-group">
@@ -409,9 +436,15 @@
                             <thead>
                                 <tr>
                                     <th>ID</th>
+                                    <th>CMND/CCCD</th>
                                     <th>Name</th>
+                                    <th>Gender</th>
+                                    <th>Birthdate</th>
                                     <th>Job</th>
                                     <th>Phone</th>
+                                    <th>Department</th>
+                                    <th>Manager ID</th>
+                                    <th>Created At</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -455,7 +488,11 @@
                             <thead>
                                 <tr>
                                     <th>ID</th>
+                                    <th>Type</th>
+                                    <th>Name / Company</th>
+                                    <th>CCCD</th>
                                     <th>Phone</th>
+                                    <th>Address</th>
                                     <th>Points</th>
                                     <th>Actions</th>
                                 </tr>
@@ -642,14 +679,26 @@
                     tbody.innerHTML += `
                         <tr>
                             <td>${e.IDNhanVien}</td>
-                            <td>${e.Ho} ${e.Ten}</td>
+                            <td>${e.CMND_CCCD || ''}</td>
+                            <td>${e.Ho || ''} ${e.Ten || ''}</td>
+                            <td>${e.GioiTinh || ''}</td>
+                            <td>${e.NgaySinh || ''}</td>
                             <td>${e.CongViec || '-'}</td>
                             <td>${e.SDT || '-'}</td>
-                            <td><button class="delete-btn" onclick="deleteEmp('${e.IDNhanVien}')">Delete</button></td>
+                            <td>${e.BoPhanQuanLy || '-'}</td>
+                            <td>${e.IDQuanLy || '-'}</td>
+                            <td>${e.created_at || ''}</td>
+                            <td class="actions">
+                                <button onclick="openDependents('${e.IDNhanVien}')">Dependents</button>
+                                <button class="delete-btn" onclick="deleteEmp('${e.IDNhanVien}')">Delete</button>
+                            </td>
                         </tr>
                     `;
                 });
-                
+
+                // populate manager select with current employees
+                populateManagerSelect(emps);
+
                 document.getElementById('employees-loading').style.display = 'none';
                 document.getElementById('employees-table').style.display = 'table';
             } catch (e) {
@@ -669,7 +718,10 @@
                         Ten: document.getElementById('emp-ten').value,
                         SDT: document.getElementById('emp-phone').value,
                         CongViec: document.getElementById('emp-job').value,
-                        BoPhanQuanLy: document.getElementById('emp-dept').value
+                        GioiTinh: document.getElementById('emp-gender').value,
+                        NgaySinh: document.getElementById('emp-dob').value || null,
+                        IDQuanLy: document.getElementById('emp-manager').value || null,
+                        BoPhanQuanLy: document.getElementById('emp-dept').value || null
                     })
                 });
                 const data = await res.json();
@@ -685,6 +737,81 @@
                 showAlert('employees-alert', 'Error: ' + e, 'error');
             }
         });
+
+        // when manager selection changes, auto-fill department from option dataset
+        document.getElementById('emp-manager')?.addEventListener('change', (ev)=>{
+            const sel = ev.target;
+            const opt = sel.options[sel.selectedIndex];
+            if(opt && opt.dataset && opt.dataset.congviec){
+                document.getElementById('emp-dept').value = opt.dataset.congviec;
+            }
+        });
+
+        // DEPENDENTS UI
+        function openDependents(empId){
+            const panelId = 'dependents-panel';
+            let panel = document.getElementById(panelId);
+            if(!panel){
+                // create panel
+                panel = document.createElement('div');
+                panel.id = panelId;
+                panel.style.padding = '12px';
+                panel.style.borderTop = '1px solid #eee';
+                const html = `
+                    <h3>Dependents for <span id="dep-emp-id"></span></h3>
+                    <div id="dep-list"></div>
+                    <h4>Add dependent</h4>
+                    <div class="form-group"><label>CMND</label><input id="dep-cmnd"></div>
+                    <div class="form-group"><label>Ho</label><input id="dep-ho"></div>
+                    <div class="form-group"><label>Ten</label><input id="dep-ten"></div>
+                    <div class="form-group"><label>Quan He</label><input id="dep-qh"></div>
+                    <div class="btn-group"><button onclick="addDependent()">Add</button><button onclick="closeDependents()">Close</button></div>
+                `;
+                panel.innerHTML = html;
+                document.querySelector('#employees .content-section').appendChild(panel);
+            }
+            document.getElementById('dep-emp-id').textContent = empId;
+            panel.dataset.empId = empId;
+            fetchDependents(empId);
+        }
+
+        function closeDependents(){
+            const panel = document.getElementById('dependents-panel');
+            if(panel) panel.remove();
+        }
+
+        async function fetchDependents(empId){
+            try{
+                const res = await fetch(`${API_URL}/employees/${empId}/dependents`, { headers: getAuthHeader() });
+                const deps = await res.json();
+                const list = document.getElementById('dep-list');
+                if(!deps || deps.length===0) { list.innerHTML = '<p>No dependents</p>'; return; }
+                let html = '<ul>';
+                deps.forEach(d=>{ html += `<li>${d.CMND_CCCD} - ${d.Ho} ${d.Ten} (${d.Quan_He}) <button onclick="removeDependent('${empId}','${d.CMND_CCCD}')">Remove</button></li>` });
+                html += '</ul>';
+                list.innerHTML = html;
+            }catch(err){ showAlert('employees-alert','Error loading dependents','error'); }
+        }
+
+        async function addDependent(){
+            const panel = document.getElementById('dependents-panel');
+            const empId = panel.dataset.empId;
+            const payload = { CMND_CCCD: document.getElementById('dep-cmnd').value, Ho: document.getElementById('dep-ho').value, Ten: document.getElementById('dep-ten').value, Quan_He: document.getElementById('dep-qh').value };
+            try{
+                const res = await fetch(`${API_URL}/employees/${empId}/dependents`, { method:'POST', headers: getAuthHeader(), body: JSON.stringify(payload) });
+                if(!res.ok) throw new Error((await res.json()).error || 'Add failed');
+                fetchDependents(empId);
+            }catch(err){ showAlert('employees-alert','Error adding dependent: '+err.message,'error'); }
+        }
+
+        async function removeDependent(empId, cmnd){
+            if(!confirm('Remove dependent '+cmnd+'?')) return;
+            try{
+                const res = await fetch(`${API_URL}/employees/${empId}/dependents/${cmnd}`, { method:'DELETE', headers: getAuthHeader() });
+                if(!res.ok) throw new Error((await res.json()).error || 'Delete failed');
+                fetchDependents(empId);
+            }catch(err){ showAlert('employees-alert','Error removing dependent: '+err.message,'error'); }
+        }
 
         async function deleteEmp(id) {
             if (!confirm(`Delete employee ${id}?`)) return;
@@ -711,23 +838,73 @@
                 
                 const tbody = document.getElementById('customers-tbody');
                 tbody.innerHTML = '';
-                
+
                 custs.forEach(c => {
+                    const nameOrCompany = c.type === 'CaNhan' ? `${c.Ho || ''} ${c.Ten || ''}` : (c.TenCongTy || '');
                     tbody.innerHTML += `
                         <tr>
                             <td>${c.IDKhachHang}</td>
-                            <td>${c.SDT || '-'}</td>
+                            <td>${c.type || ''}</td>
+                            <td>${escapeHtml(nameOrCompany)}</td>
+                            <td>${c.CCCD_CMND || c.CCCD || ''}</td>
+                            <td>${c.SDT || ''}</td>
+                            <td>${c.DiaChi || ''}</td>
                             <td>${c.DiemTichLuy || 0}</td>
-                            <td><button class="delete-btn" onclick="deleteCust('${c.IDKhachHang}')">Delete</button></td>
+                            <td class="actions">
+                                <button onclick="viewCustomer('${c.IDKhachHang}')">View</button>
+                                <button class="delete-btn" onclick="deleteCust('${c.IDKhachHang}')">Delete</button>
+                            </td>
                         </tr>
                     `;
                 });
-                
+
                 document.getElementById('customers-loading').style.display = 'none';
                 document.getElementById('customers-table').style.display = 'table';
             } catch (e) {
                 showAlert('customers-alert', 'Error loading customers', 'error');
             }
+        }
+
+        async function viewCustomer(id){
+            try{
+                const res = await fetch(`${API_URL}/customers/${id}`, { headers: getAuthHeader() });
+                if(!res.ok) throw new Error('Failed to load');
+                const c = await res.json();
+                // show minimal detail panel
+                let panel = document.getElementById('customer-detail-panel');
+                if(!panel){
+                    panel = document.createElement('div');
+                    panel.id = 'customer-detail-panel';
+                    panel.style.padding = '12px';
+                    panel.style.borderTop = '1px solid #eee';
+                    document.querySelector('#customers .content-section').appendChild(panel);
+                }
+                panel.innerHTML = `
+                    <h3>Customer ${c.IDKhachHang}</h3>
+                    <p><strong>Type:</strong> ${c.type}</p>
+                    <p><strong>Name/Company:</strong> ${escapeHtml(c.Ho || '')} ${escapeHtml(c.Ten || '')} ${escapeHtml(c.TenCongTy || '')}</p>
+                    <p><strong>CCCD:</strong> ${c.CCCD_CMND || c.CCCD || ''}</p>
+                    <p><strong>Phone:</strong> ${c.SDT || ''}</p>
+                    <p><strong>Address:</strong> ${c.DiaChi || ''}</p>
+                    <p><strong>Points:</strong> ${c.DiemTichLuy || 0}</p>
+                    <div class="btn-group"><button onclick="closeCustomerDetail()">Close</button></div>
+                `;
+            }catch(err){ showAlert('customers-alert','Error loading customer','error'); }
+        }
+
+        function closeCustomerDetail(){ const p = document.getElementById('customer-detail-panel'); if(p) p.remove(); }
+
+        function populateManagerSelect(emps){
+            const sel = document.getElementById('emp-manager');
+            if(!sel) return;
+            sel.innerHTML = '<option value="">-- None --</option>';
+            emps.forEach(e=>{
+                const opt = document.createElement('option');
+                opt.value = e.IDNhanVien;
+                opt.text = `${e.IDNhanVien} - ${e.Ho} ${e.Ten} (${e.CongViec||''})`;
+                if(e.CongViec) opt.dataset.congviec = e.CongViec;
+                sel.appendChild(opt);
+            });
         }
 
         document.getElementById('customers-form')?.addEventListener('submit', async (e) => {
@@ -784,9 +961,13 @@
                         <tr>
                             <td>${p.IDVatPham}</td>
                             <td>${p.TenVatPham}</td>
-                            <td>${p.SoLuongKhaDung || 0}</td>
+                            <td id="avail-${p.IDVatPham}">${p.SoLuongKhaDung || 0}</td>
                             <td>${(p.GiaNiemYet || 0).toLocaleString('vi-VN')} ₫</td>
-                            <td><button class="delete-btn" onclick="deleteProd(${p.IDVatPham})">Delete</button></td>
+                            <td class="actions">
+                                <input type="number" id="admin-add-${p.IDVatPham}" placeholder="Qty" min="1" style="width:80px;padding:6px;border:1px solid #ddd;border-radius:4px;margin-right:6px">
+                                <button onclick="adminAddStock(${p.IDVatPham}, '${escapeHtml(p.TenVatPham)}', ${p.GiaNiemYet||0})" style="background:#17a2b8;padding:6px 8px;border-radius:6px;border:none;color:white;cursor:pointer">Add</button>
+                                <button class="delete-btn" onclick="deleteProd(${p.IDVatPham})">Delete</button>
+                            </td>
                         </tr>
                     `;
                 });
@@ -796,6 +977,38 @@
             } catch (e) {
                 showAlert('products-alert', 'Error loading products', 'error');
             }
+        }
+
+        async function adminAddStock(id, name, price) {
+            const input = document.getElementById(`admin-add-${id}`);
+            let delta = parseInt(input.value) || 0;
+            if (delta <= 0) { showAlert('products-alert', 'Enter a positive quantity', 'error'); return; }
+            try {
+                // fetch current product to compute new total
+                const res1 = await fetch(`${API_URL}/products/${id}`, { headers: getAuthHeader() });
+                if (!res1.ok) throw new Error('Failed to fetch product');
+                const prod = await res1.json();
+                const newQty = (prod.SoLuongKhaDung || 0) + delta;
+
+                const res = await fetch(`${API_URL}/products/${id}`, {
+                    method: 'PUT',
+                    headers: getAuthHeader(),
+                    body: JSON.stringify({ TenVatPham: prod.TenVatPham, SoLuongKhaDung: newQty, GiaNiemYet: prod.GiaNiemYet })
+                });
+                const j = await res.json();
+                if (!res.ok) throw new Error(j.error || 'Update failed');
+                document.getElementById(`avail-${id}`).textContent = newQty;
+                input.value = '';
+                showAlert('products-alert', `✅ Added ${delta} to ${name}`, 'success');
+                loadStats();
+            } catch (err) {
+                showAlert('products-alert', 'Error: ' + err.message, 'error');
+            }
+        }
+
+        // small utility to escape quotes in product names passed into JS template
+        function escapeHtml(str) {
+            return String(str).replace(/'/g, "\\'").replace(/"/g, '\\"');
         }
 
         document.getElementById('products-form')?.addEventListener('submit', async (e) => {

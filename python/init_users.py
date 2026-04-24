@@ -1,144 +1,52 @@
 #!/usr/bin/env python3
 """
-Database User Initialization Script
-Creates demo users for testing the role-based system
-Run this after setting up the database schema
+Replace inline user creation with SQL file execution.
+This script executes `sql/07_init_users.sql` to initialize demo users.
 """
 
-import mysql.connector
-import hashlib
 import os
+import sys
+from pathlib import Path
+import mysql.connector
 from dotenv import load_dotenv
 
 load_dotenv()
 
-DB_HOST = os.getenv('MYSQL_HOST', 'localhost')
-DB_USER = os.getenv('MYSQL_USER', 'root')
-DB_PASSWORD = os.getenv('MYSQL_PASSWORD', 'password')
-DB_NAME = os.getenv('MYSQL_DB', 'btl2_db')
+BASE_DIR = Path(__file__).resolve().parent.parent
+SQL_FILE = BASE_DIR / 'sql' / '07_init_users.sql'
 
-def hash_password(password):
-    """Hash password using SHA256"""
-    return hashlib.sha256(password.encode()).hexdigest()
-
-def create_users():
-    """Create demo users in the Users table"""
-    
+def run_sql_file(path):
+    cfg = {
+        'host': os.getenv('MYSQL_HOST', 'localhost'),
+        'port': int(os.getenv('MYSQL_PORT', 3306)),
+        'user': os.getenv('MYSQL_USER', 'root'),
+        'password': os.getenv('MYSQL_PASSWORD', ''),
+        'database': os.getenv('MYSQL_DB', 'btl2_db')
+    }
     try:
-        # Connect to database
-        conn = mysql.connector.connect(
-            host=DB_HOST,
-            user=DB_USER,
-            password=DB_PASSWORD,
-            database=DB_NAME
-        )
+        conn = mysql.connector.connect(**cfg)
         cur = conn.cursor()
-        
-        print("📝 Creating demo users...")
-        
-        # First, ensure Users table exists
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS Users (
-                IDUser INT AUTO_INCREMENT PRIMARY KEY,
-                Username VARCHAR(50) UNIQUE NOT NULL,
-                Password VARCHAR(255) NOT NULL,
-                Role ENUM('Admin', 'NhanVienDungQuay', 'KhachHang') NOT NULL,
-                ReferenceID VARCHAR(20),
-                IsActive BOOLEAN DEFAULT TRUE,
-                CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-            )
-        """)
-        
-        # Clear existing demo users (optional)
-        cur.execute("DELETE FROM Users WHERE Username IN ('admin', 'cashier', 'customer')")
-        
-        demo_users = [
-            {
-                'username': 'admin',
-                'password': 'admin123',
-                'role': 'Admin',
-                'reference_id': 'NV001'  # Admin employee
-            },
-            {
-                'username': 'cashier',
-                'password': 'cashier123',
-                'role': 'NhanVienDungQuay',
-                'reference_id': 'NV002'  # Staff employee
-            },
-            {
-                'username': 'customer',
-                'password': 'customer123',
-                'role': 'KhachHang',
-                'reference_id': 'KH001'  # Customer
-            }
-        ]
-        
-        for user in demo_users:
-            hashed_pwd = hash_password(user['password'])
-            
-            try:
-                cur.execute("""
-                    INSERT INTO Users (Username, Password, Role, ReferenceID, IsActive)
-                    VALUES (%s, %s, %s, %s, TRUE)
-                """, (
-                    user['username'],
-                    hashed_pwd,
-                    user['role'],
-                    user['reference_id']
-                ))
-                print(f"  ✅ Created {user['role']:20} | Username: {user['username']:10} | Pass: {user['password']}")
-            except mysql.connector.Error as e:
-                if "Duplicate entry" in str(e):
-                    print(f"  ⚠️  {user['username']} already exists, skipping")
-                else:
-                    raise
-        
+        with open(path, 'r', encoding='utf-8') as f:
+            sql = f.read()
+        # Execute statements
+        for stmt in sql.split(';'):
+            s = stmt.strip()
+            if s:
+                cur.execute(s)
         conn.commit()
-        print("\n✨ Users created successfully!")
-        print("\n📝 Demo Accounts:")
-        print("┌─────────────────────────────────────────────────────┐")
-        print("│ Role              │ Username  │ Password     │ Token │")
-        print("├─────────────────────────────────────────────────────┤")
-        print("│ Admin             │ admin     │ admin123     │ Bearer... │")
-        print("│ Cashier/Staff     │ cashier   │ cashier123   │ Bearer... │")
-        print("│ Customer          │ customer  │ customer123  │ Bearer... │")
-        print("└─────────────────────────────────────────────────────┘")
-        print("\n🔐 Security Note:")
-        print("  - These are demo credentials only")
-        print("  - Change them in production!")
-        print("  - Passwords are hashed with SHA256")
-        
-        # Verify the employees/customers exist
-        print("\n🔍 Verifying referenced entities...")
-        
-        cur.execute("SELECT COUNT(*) FROM NhanVien WHERE IDNhanVien IN ('NV001', 'NV002')")
-        emp_count = cur.fetchone()[0]
-        if emp_count < 2:
-            print("  ⚠️  Warning: Only found {} employees (need 2: NV001, NV002)".format(emp_count))
-            print("     Create employees first or update reference IDs in Users table")
-        else:
-            print("  ✅ Found required employees: NV001, NV002")
-        
-        cur.execute("SELECT COUNT(*) FROM KhachHang WHERE IDKhachHang = 'KH001'")
-        cust_count = cur.fetchone()[0]
-        if cust_count < 1:
-            print("  ⚠️  Warning: Customer KH001 not found")
-            print("     Create customer first or update reference IDs in Users table")
-        else:
-            print("  ✅ Found required customer: KH001")
-        
+        cur.close()
         conn.close()
-        
-    except mysql.connector.Error as e:
-        print(f"❌ Database Error: {e}")
-        exit(1)
+        print(f"✓ Executed {path}")
+        return True
     except Exception as e:
-        print(f"❌ Error: {e}")
-        exit(1)
+        print(f"✗ Error executing {path}: {e}")
+        return False
+
 
 if __name__ == '__main__':
-    print("🚀 Library Management System - User Initialization\n")
-    print(f"Database: {DB_NAME} @ {DB_HOST}")
-    create_users()
-    print("\n✅ Setup complete! Start auth_app.py and login with demo credentials.")
+    print("🚀 Initializing demo users from SQL file")
+    if not SQL_FILE.exists():
+        print(f"✗ SQL file not found: {SQL_FILE}")
+        sys.exit(1)
+    ok = run_sql_file(SQL_FILE)
+    sys.exit(0 if ok else 1)

@@ -172,6 +172,110 @@ BEGIN
     ORDER BY d.NgayMua DESC;
 END;
 
+-- ===== MƯỢN / THUÊ =====
+-- Procedure: Thêm lần mượn với các ràng buộc nghiệp vụ
+CREATE PROCEDURE sp_insert_lan_muon(
+    IN p_IDVatPham INT,
+    IN p_MaSoBanCopy VARCHAR(20),
+    IN p_CCCD_CMND VARCHAR(20),
+    IN p_MaThe INT,
+    IN p_MaDonMuon VARCHAR(20),
+    IN p_NgayMuon DATE
+)
+BEGIN
+    DECLARE v_soLuong INT;
+    DECLARE v_ngayLapThe DATE;
+    DECLARE v_count_active INT;
+    DECLARE v_idKhach VARCHAR(20);
+
+    -- Check existence of copy and stock
+    SELECT SoLuongKhaDung INTO v_soLuong FROM VatPham WHERE IDVatPham = p_IDVatPham;
+    IF v_soLuong IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Vật phẩm không tồn tại';
+    END IF;
+
+    IF v_soLuong <= 3 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Vật phẩm tồn kho thấp, không cho phép mượn';
+    END IF;
+
+    -- Check thẻ thành viên validity
+    SELECT NgayLapThe, NgayHetHan INTO v_ngayLapThe, @v_ngayHetHan FROM TheThanhVien WHERE CCCD_CMND = p_CCCD_CMND AND MaThe = p_MaThe;
+    IF @v_ngayHetHan IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Thẻ thành viên không tồn tại';
+    END IF;
+
+    IF @v_ngayHetHan < p_NgayMuon THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Thẻ thành viên đã hết hạn';
+    END IF;
+
+    -- Limit: if within 30 days of card creation, max 2 active borrows
+    IF DATEDIFF(p_NgayMuon, v_ngayLapThe) <= 30 THEN
+        SELECT COUNT(*) INTO v_count_active FROM LanMuon WHERE CCCD_CMND = p_CCCD_CMND AND HanTra >= p_NgayMuon;
+        IF v_count_active >= 2 THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Giới hạn mượn trong 30 ngày đầu: tối đa 2 giao dịch';
+        END IF;
+    END IF;
+
+    -- Borrow limits by customer type (simple policy)
+    SELECT IDKhachHang INTO v_idKhach FROM CaNhan WHERE CCCD_CMND = p_CCCD_CMND;
+    IF v_idKhach IS NULL THEN
+        SELECT IDKhachHang INTO v_idKhach FROM TapTheCongTy WHERE MaSoThue = p_CCCD_CMND; -- try company mapping (if used)
+    END IF;
+
+    IF v_idKhach IS NOT NULL THEN
+        -- assume CaNhan limit 5, TapTheCongTy limit 10
+        IF EXISTS (SELECT 1 FROM CaNhan WHERE CCCD_CMND = p_CCCD_CMND) THEN
+            SELECT COUNT(*) INTO v_count_active FROM LanMuon WHERE CCCD_CMND = p_CCCD_CMND AND HanTra >= p_NgayMuon;
+            IF v_count_active >= 5 THEN
+                SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Giới hạn mượn cho cá nhân đã đạt tối đa';
+            END IF;
+        ELSE
+            SELECT COUNT(*) INTO v_count_active FROM LanMuon WHERE CCCD_CMND = p_CCCD_CMND AND HanTra >= p_NgayMuon;
+            IF v_count_active >= 10 THEN
+                SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Giới hạn mượn cho tổ chức đã đạt tối đa';
+            END IF;
+        END IF;
+    END IF;
+
+    -- Insert borrow record
+    INSERT INTO LanMuon (IDVatPham, MaSoBanCopy, CCCD_CMND, MaThe, MaDonMuon, TinhTrangSauKhiTra, NgayMuon, HanTra)
+    VALUES (p_IDVatPham, p_MaSoBanCopy, p_CCCD_CMND, p_MaThe, p_MaDonMuon, 'Tốt', p_NgayMuon, DATE_ADD(p_NgayMuon, INTERVAL 30 DAY));
+END;
+
+-- Procedure: Thêm lần thuê (yêu cầu xử lý đặt cọc nếu vật phẩm đắt)
+CREATE PROCEDURE sp_insert_lan_thue(
+    IN p_IDKhachHang VARCHAR(20),
+    IN p_IDVatPham INT,
+    IN p_MaDonThue VARCHAR(20),
+    IN p_ThoiHanTra DATE,
+    IN p_GiaThue DECIMAL(10,2),
+    IN p_NgayThue DATE,
+    IN p_SoLuong INT,
+    IN p_PaymentDeposit DECIMAL(15,2)
+)
+BEGIN
+    DECLARE v_gia DECIMAL(15,2);
+
+    SELECT GiaNiemYet INTO v_gia FROM VatPham WHERE IDVatPham = p_IDVatPham;
+    IF v_gia IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Vật phẩm không tồn tại';
+    END IF;
+
+    IF v_gia > 2000000 THEN
+        IF p_PaymentDeposit < (v_gia * 0.5) THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Yêu cầu đặt cọc tối thiểu 50% cho vật phẩm giá cao';
+        END IF;
+    END IF;
+
+    -- Check stock
+    IF (SELECT SoLuongKhaDung FROM VatPham WHERE IDVatPham = p_IDVatPham) <= 3 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Vật phẩm tồn kho thấp, không cho phép thuê';
+    END IF;
+
+    INSERT INTO LanThue (IDKhachHang, IDVatPham, MaDonThue, ThoiHanTra, GiaThue, NgayThue, NgayTra, SoLuong)
+    VALUES (p_IDKhachHang, p_IDVatPham, p_MaDonThue, p_ThoiHanTra, p_GiaThue, p_NgayThue, NULL, p_SoLuong);
+END;
+
 -- ===== THỐNG KÊ =====
 -- Procedure: Tính tổng doanh thu theo khách hàng
 CREATE PROCEDURE sp_get_doanh_thu_khach_hang(IN p_IDKhachHang VARCHAR(20))

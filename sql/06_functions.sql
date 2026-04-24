@@ -76,6 +76,43 @@ BEGIN
     RETURN diem >= 300;
 END;
 
+-- Function: Mask phone number for staff (show only last 3 digits)
+CREATE FUNCTION fn_mask_sdt(p_SDT VARCHAR(20), p_role VARCHAR(50))
+RETURNS VARCHAR(50)
+DETERMINISTIC
+READS SQL DATA
+BEGIN
+    IF p_role = 'NhanVienDungQuay' THEN
+        IF p_SDT IS NULL THEN
+            RETURN NULL;
+        END IF;
+        RETURN CONCAT(REPEAT('*', GREATEST(0, CHAR_LENGTH(p_SDT) - 3)), SUBSTRING(p_SDT, -3));
+    ELSE
+        RETURN p_SDT;
+    END IF;
+END;
+
+-- Function: Compute compensation amount (percentage rule)
+CREATE FUNCTION fn_compute_compensation(p_IDVatPham INT, p_status VARCHAR(20))
+RETURNS DECIMAL(15,2)
+READS SQL DATA
+BEGIN
+    DECLARE v_price DECIMAL(15,2);
+    DECLARE v_multiplier DECIMAL(4,2);
+    SELECT GiaNiemYet INTO v_price FROM VatPham WHERE IDVatPham = p_IDVatPham;
+    IF v_price IS NULL THEN
+        RETURN 0;
+    END IF;
+    IF p_status = 'Hư' THEN
+        SET v_multiplier = 1.2;
+    ELSEIF p_status = 'Mất' THEN
+        SET v_multiplier = 1.5;
+    ELSE
+        SET v_multiplier = 0;
+    END IF;
+    RETURN v_price * v_multiplier;
+END;
+
 -- Function: Tính giá trị trung bình mỗi hóa đơn của khách hàng
 CREATE FUNCTION fn_gia_tri_tb_don_hang(p_IDKhachHang VARCHAR(20))
 RETURNS DECIMAL(15, 2)

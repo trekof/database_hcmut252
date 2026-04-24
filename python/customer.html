@@ -391,9 +391,35 @@
                         <value id="profile-id"></value>
                     </div>
                     <div class="profile-field">
-                        <label>📞 Phone:</label>
-                        <value id="profile-phone"></value>
+                        <label>👥 Type:</label>
+                        <value id="profile-type"></value>
                     </div>
+                    <div class="profile-field">
+                        <label>📞 Phone:</label>
+                        <div><input id="profile-phone-input" type="text" disabled style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px"></div>
+                    </div>
+                    <div class="profile-field">
+                        <label>CCCD / CMND:</label>
+                        <div><input id="profile-cccd" type="text" disabled style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px"></div>
+                    </div>
+                    <div class="profile-field">
+                        <label>Họ:</label>
+                        <div><input id="profile-ho" type="text" disabled style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px"></div>
+                    </div>
+                    <div class="profile-field">
+                        <label>Tên:</label>
+                        <div><input id="profile-ten" type="text" disabled style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px"></div>
+                    </div>
+                    <div class="profile-field">
+                        <label>Địa chỉ:</label>
+                        <div><input id="profile-diachi" type="text" disabled style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px"></div>
+                    </div>
+                    <div style="text-align:center;margin-top:10px">
+                        <button id="edit-profile-btn" onclick="enableEdit()" style="background:#007bff;color:white;padding:10px 16px;border-radius:6px;border:none;cursor:pointer">Edit Profile</button>
+                        <button id="save-profile-btn" onclick="saveProfile()" style="background:#28a745;color:white;padding:10px 16px;border-radius:6px;border:none;cursor:pointer;display:none;margin-left:8px">Save</button>
+                        <button id="cancel-profile-btn" onclick="cancelEdit()" style="background:#6c757d;color:white;padding:10px 16px;border-radius:6px;border:none;cursor:pointer;display:none;margin-left:8px">Cancel</button>
+                    </div>
+                    <div style="height:12px"></div>
                     <div class="profile-field">
                         <label>⭐ Loyalty Points:</label>
                         <value id="profile-points"></value>
@@ -488,6 +514,15 @@
                 <p>No products available at this time</p>
             </div>
             <div id="catalog-content" class="product-grid" style="display: none;"></div>
+            <div style="padding:20px;border-top:1px solid #eee;background:#fafafa">
+                <h3 style="margin-bottom:10px">🛒 Cart</h3>
+                <div id="cart-content">No items in cart</div>
+                <div style="margin-top:10px;text-align:right">
+                    <label style="margin-right:8px"><input type="checkbox" id="cart-delivery"> Delivery</label>
+                    <input id="cart-address" placeholder="Delivery address" style="padding:8px;border:1px solid #ddd;border-radius:4px;width:40%;display:inline-block;margin-right:8px">
+                    <button onclick="checkoutOrder()" style="background:#28a745;color:white;padding:8px 12px;border-radius:6px;border:none;cursor:pointer">Checkout</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -536,10 +571,15 @@
                 const customer = await res.json();
                 
                 document.getElementById('profile-id').textContent = customer.IDKhachHang || '-';
-                document.getElementById('profile-phone').textContent = customer.SDT || '-';
+                document.getElementById('profile-phone-input').value = customer.SDT || '';
                 document.getElementById('profile-points').textContent = customer.DiemTichLuy || 0;
                 document.getElementById('profile-borrowed').textContent = customer.borrowingCount || 0;
                 document.getElementById('profile-rented').textContent = customer.rentalCount || 0;
+                document.getElementById('profile-cccd').value = customer.CCCD_CMND || '';
+                document.getElementById('profile-ho').value = customer.Ho || '';
+                document.getElementById('profile-ten').value = customer.Ten || '';
+                document.getElementById('profile-diachi').value = customer.DiaChi || '';
+                document.getElementById('profile-type').textContent = customer.type || 'Unknown';
                 
                 document.getElementById('profile-loading').style.display = 'none';
                 document.getElementById('profile-content').style.display = 'block';
@@ -548,6 +588,42 @@
                 document.getElementById('profile-alert').innerHTML = '❌ Error loading profile: ' + e.message;
             }
         }
+
+        async function saveProfile(){
+            const payload = {
+                SDT: document.getElementById('profile-phone-input').value || null,
+                CCCD_CMND: document.getElementById('profile-cccd').value || null,
+                Ho: document.getElementById('profile-ho').value || null,
+                Ten: document.getElementById('profile-ten').value || null,
+                DiaChi: document.getElementById('profile-diachi').value || null
+            };
+            try{
+                const res = await fetch(`${API_URL}/customers/me`, { method: 'PATCH', headers: getAuthHeader(), body: JSON.stringify(payload)});
+                const j = await res.json();
+                if(!res.ok) throw new Error(j.error || 'Failed to save');
+                showAlert('profile-alert', '✅ Profile updated', 'info');
+                // return to view mode
+                setEditMode(false);
+                loadProfile();
+            }catch(err){
+                showAlert('profile-alert', '❌ '+err.message, 'error');
+            }
+        }
+
+        function setEditMode(enabled){
+            document.getElementById('profile-phone-input').disabled = !enabled;
+            document.getElementById('profile-cccd').disabled = !enabled;
+            document.getElementById('profile-ho').disabled = !enabled;
+            document.getElementById('profile-ten').disabled = !enabled;
+            document.getElementById('profile-diachi').disabled = !enabled;
+            document.getElementById('edit-profile-btn').style.display = enabled ? 'none' : 'inline-block';
+            document.getElementById('save-profile-btn').style.display = enabled ? 'inline-block' : 'none';
+            document.getElementById('cancel-profile-btn').style.display = enabled ? 'inline-block' : 'none';
+        }
+
+        function enableEdit(){ setEditMode(true); }
+
+        function cancelEdit(){ setEditMode(false); loadProfile(); }
 
         async function loadStats() {
             try {
@@ -698,9 +774,51 @@
                         <div class="product-qty ${qtyClass}">
                             📦 ${qtyText}
                         </div>
+                        <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+                            <input type="number" min="1" max="${p.SoLuongKhaDung||0}" value="1" id="qty-${p.IDVatPham}" style="width:80px;padding:6px;border:1px solid #ddd;border-radius:4px">
+                            <button onclick="addToCart(${p.IDVatPham}, '${p.TenVatPham}', ${p.GiaNiemYet||0})" style="background:#007bff;color:white;padding:8px 12px;border-radius:6px;border:none;cursor:pointer">Add to Cart</button>
+                        </div>
                     </div>
                 `;
             });
+        }
+
+        // CART HANDLING
+        let CART = [];
+        function addToCart(id, name, price){
+            const qtyEl = document.getElementById(`qty-${id}`);
+            const qty = parseInt(qtyEl ? qtyEl.value : 1) || 1;
+            const existing = CART.find(i=>i.IDVatPham===id);
+            if(existing) existing.SoLuong += qty; else CART.push({IDVatPham:id, SoLuong:qty, GiaLucMua:price, TenVatPham:name});
+            renderCart();
+        }
+
+        function renderCart(){
+            const el = document.getElementById('cart-content');
+            if(CART.length===0){ el.innerHTML='No items in cart'; return; }
+            let html = '<table style="width:100%;border-collapse:collapse"><thead><tr><th>Product</th><th>Qty</th><th>Price</th><th></th></tr></thead><tbody>';
+            CART.forEach((it,idx)=>{
+                html += `<tr><td>${it.TenVatPham}</td><td>${it.SoLuong}</td><td>${(it.GiaLucMua||0).toLocaleString('vi-VN')} ₫</td><td><button onclick="removeFromCart(${idx})">Remove</button></td></tr>`;
+            });
+            html += '</tbody></table>';
+            el.innerHTML = html;
+        }
+
+        function removeFromCart(idx){ CART.splice(idx,1); renderCart(); }
+
+        async function checkoutOrder(){
+            if(CART.length===0){ showAlert('catalog-alert','Cart is empty','error'); return; }
+            const isDelivery = document.getElementById('cart-delivery').checked;
+            const diachi = document.getElementById('cart-address').value;
+            const payload = { items: CART, isDelivery: isDelivery, DiaChiNhanHang: diachi };
+            try{
+                const res = await fetch(`${API_URL}/orders`, { method:'POST', headers: getAuthHeader(), body: JSON.stringify(payload) });
+                const j = await res.json();
+                if(!res.ok) throw new Error(j.error || 'Order failed');
+                CART = [];
+                renderCart();
+                showAlert('catalog-alert', '✅ Order created: '+(j.IDDonMuaHang||''), 'info');
+            }catch(err){ showAlert('catalog-alert','❌ '+err.message,'error'); }
         }
 
         function filterProducts() {

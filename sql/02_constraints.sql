@@ -19,3 +19,24 @@ CREATE INDEX idx_lanthue_vatpham ON LanThue(IDVatPham);
 CREATE INDEX idx_lanmuon_vatpham ON LanMuon(IDVatPham);
 CREATE INDEX idx_capnhat_nhanvien ON CapNhat(IDNhanVien);
 CREATE INDEX idx_capnhat_vatpham ON CapNhat(IDVatPham);
+
+-- Table: BoThuong (bồi thường khi trả hư/mất)
+CREATE TABLE IF NOT EXISTS BoThuong (
+	IDBoThuong INT AUTO_INCREMENT PRIMARY KEY,
+	IDVatPham INT,
+	MaSoBanCopy VARCHAR(20),
+	CCCD_CMND VARCHAR(20),
+	MaDonMuon VARCHAR(20),
+	SoTien DECIMAL(15,2),
+	LyDo VARCHAR(255),
+	CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	FOREIGN KEY (IDVatPham) REFERENCES VatPham(IDVatPham) ON DELETE SET NULL
+);
+
+-- Table: KhachHangKhoa (tạm khóa quyền mượn/thue)
+CREATE TABLE IF NOT EXISTS KhachHangKhoa (
+	IDKhachHang VARCHAR(20) PRIMARY KEY,
+	LockedUntil DATETIME,
+	Reason VARCHAR(255),
+	INDEX (LockedUntil)
+);
