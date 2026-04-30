@@ -333,6 +333,19 @@
             font-size: 0.9em;
             color: #004085;
         }
+        .dependents-list {
+            margin-bottom: 8px;
+            padding: 8px;
+            background: #f1f1f1;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .dependent-info {
+            display: flex;
+            flex-direction: column;
+        }
     </style>
 </head>
 <body>
@@ -703,6 +716,9 @@
                             <td>${e.IDQuanLy || '-'}</td>
                             <td>${formatDate(e.created_at) || ''}</td>
                             <td class="actions">
+                                <button onclick="openEditEmp('${e.IDNhanVien}', '${e.Ho}', '${e.Ten}', '${e.SDT}', '${e.CongViec}')" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </button>
                                 <button onclick="openDependents('${e.IDNhanVien}')" title="Add/View Dependents">
                                     <i class="fas fa-users"></i>
                                 </button>
@@ -780,10 +796,10 @@
                     <div id="dep-list"></div>
                     <h4>Add dependent</h4>
                     <div class="form-group"><label>CMND</label><input id="dep-cmnd"></div>
-                    <div class="form-group"><label>Ho</label><input id="dep-ho"></div>
-                    <div class="form-group"><label>Ten</label><input id="dep-ten"></div>
-                    <div class="form-group"><label>Quan He</label><input id="dep-qh"></div>
-                    <div class="btn-group"><button onclick="addDependent()">Add</button><button onclick="closeDependents()">Close</button></div>
+                    <div class="form-group"><label>First Name</label><input id="dep-ho"></div>
+                    <div class="form-group"><label>Last Name</label><input id="dep-ten"></div>
+                    <div class="form-group"><label>Relationship</label><input id="dep-qh"></div>
+                    <div class="btn-group"><button onclick="addDependent()"><i class="fas fa-plus"></i> Add</button><button onclick="closeDependents()"><i class="fas fa-times"></i> Close</button></div>
                 `;
                 panel.innerHTML = html;
                 document.querySelector('#employees .content-section').appendChild(panel);
@@ -805,7 +821,18 @@
                 const list = document.getElementById('dep-list');
                 if(!deps || deps.length===0) { list.innerHTML = '<p>No dependents</p>'; return; }
                 let html = '<ul>';
-                deps.forEach(d=>{ html += `<li>${d.CMND_CCCD} - ${d.Ho} ${d.Ten} (${d.Quan_He}) <button onclick="removeDependent('${empId}','${d.CMND_CCCD}')">Remove</button></li>` });
+                deps.forEach(({ CMND_CCCD, Ho, Ten, Quan_He }) => {
+                    html += `
+                        <li class="dependents-list">
+                        <div class="dependent-info">
+                            <span>${CMND_CCCD}</span>
+                            <span>${Ho} ${Ten} (${Quan_He})</span>
+                        </div>
+                        <button onclick="removeDependent('${empId}', '${CMND_CCCD}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        </li>`;
+                    });
                 html += '</ul>';
                 list.innerHTML = html;
             }catch(err){ showAlert('employees-alert','Error loading dependents','error'); }
@@ -1179,6 +1206,87 @@
             else if (s.includes('late') || s.includes('trễ')) color = 'orange';
             return `<span style="color: ${color}; font-weight: bold;">${status}</span>`;
         }
+
+        // Hàm mở ô chỉnh sửa và điền thông tin cũ vào
+        function openEditEmp(id, ho, ten, sdt, congviec) {
+            document.getElementById('edit-emp-id').value = id;
+            document.getElementById('edit-emp-id-display').textContent = id;
+            document.getElementById('edit-emp-ho').value = ho || '';
+            document.getElementById('edit-emp-ten').value = ten || '';
+            document.getElementById('edit-emp-phone').value = sdt || '';
+            document.getElementById('edit-emp-job').value = congviec || 'QuanTriVien';
+            
+            document.getElementById('edit-emp-modal').style.display = 'block';
+        }
+
+        // Đảm bảo code này chạy sau khi DOM đã load
+        document.addEventListener('DOMContentLoaded', () => {
+            const editForm = document.getElementById('edit-employees-form');
+            if (editForm) {
+                editForm.onsubmit = async (e) => {
+                    e.preventDefault(); // Chặn reload trang tuyệt đối
+                    
+                    const empId = document.getElementById('edit-emp-id').value;
+                    const payload = {
+                        Ho: document.getElementById('edit-emp-ho').value,
+                        Ten: document.getElementById('edit-emp-ten').value,
+                        SDT: document.getElementById('edit-emp-phone').value,
+                        CongViec: document.getElementById('edit-emp-job').value
+                    };
+
+                    try {
+                        const res = await fetch(`${API_URL}/employees/${empId}`, {
+                            method: 'PUT',
+                            headers: getAuthHeader(),
+                            body: JSON.stringify(payload)
+                        });
+
+                        const result = await res.json();
+
+                        if (res.ok) {
+                            document.getElementById('edit-emp-modal').style.display = 'none';
+                            loadEmployees();
+                        } else {
+                            alert('Server Error: ' + (result.error || 'Cannot update employee'));
+                        }
+                    } catch (err) {
+                        console.error('Error updating employee:', err);
+                    }
+                };
+            }
+        });
     </script>
+    <div id="edit-emp-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
+        <div style="background:white; max-width:500px; margin:50px auto; padding:20px; border-radius:8px;">
+            <h3><i class="fas fa-edit"></i> Edit Employee <span id="edit-emp-id-display"></span></h3>
+            <form id="edit-employees-form">
+                <input type="hidden" id="edit-emp-id">
+                <div class="form-group">
+                    <label>Last Name</label>
+                    <input type="text" id="edit-emp-ho" required>
+                </div>
+                <div class="form-group">
+                    <label>First Name</label>
+                    <input type="text" id="edit-emp-ten" required>
+                </div>
+                <div class="form-group">
+                    <label>Phone</label>
+                    <input type="tel" id="edit-emp-phone">
+                </div>
+                <div class="form-group">
+                    <label>Job Title</label>
+                    <select id="edit-emp-job">
+                        <option value="QuanTriVien">QuanTriVien</option>
+                        <option value="NhanVienDungQuay">NhanVienDungQuay</option>
+                        <option value="TaiXeChuyenHang">TaiXeChuyenHang</option>
+                    </select>
+                </div>
+                <div class="btn-group">
+                    <button type="submit">Update</button>
+                    <button type="button" onclick="document.getElementById('edit-emp-modal').style.display='none'" style="background:#6c757d;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </body>
 </html>

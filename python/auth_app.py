@@ -416,6 +416,31 @@ def delete_employee(id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/employees/<emp_id>', methods=['PUT'])
+@require_role('Admin')
+def update_employee(emp_id):
+    try:
+        data = request.json
+        conn = get_db_connection()
+        cur = conn.cursor()
+        fields = []
+        params = []
+        for key in ['CMND_CCCD', 'Ho', 'Ten', 'NgaySinh', 'SDT', 'CongViec', 'GioiTinh', 'BoPhanQuanLy', 'IDQuanLy']:
+            if key in data:
+                fields.append(f"{key}=%s")
+                params.append(data[key])
+        if not fields:
+            return jsonify({"error": "No fields to update"}), 400
+        params.append(emp_id)
+        query = f"UPDATE NhanVien SET {', '.join(fields)} WHERE IDNhanVien=%s"
+        cur.execute(query, tuple(params))
+        conn.commit() # QUAN TRỌNG: Phải có dòng này thì DB mới thay đổi
+        cur.close()
+        conn.close()
+        return jsonify({"message": "Updated successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 # ==================== CUSTOMERS ====================
 
 @app.route('/api/customers', methods=['GET'])
