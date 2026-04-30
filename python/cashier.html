@@ -634,7 +634,7 @@
                             <td>${item.TenVatPham}</td>
                             <td>${item.NgayMuon}</td>
                             <td>${item.HanTra || '-'}</td>
-                            <td>${item.TinhTrangSauKhiTra || '-'}</td>
+                            <td>${colorize(item.TinhTrangSauKhiTra) || '-'}</td>
                         </tr>
                     `;
                 });
@@ -700,6 +700,17 @@
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             window.location.href = '/login.html';
+        }
+
+        // màu hóa tình trạng trả sách
+        function colorize(status) {
+            if (!status) return '';
+            const s = status.toLowerCase();
+            let color = '#333';
+            if (s.includes('good') || s.includes('tốt')) color = 'green';
+            else if (s.includes('damaged') || s.includes('hỏng')) color = 'red';
+            else if (s.includes('late') || s.includes('trễ')) color = 'orange';
+            return `<span style="color: ${color}; font-weight: bold;">${status}</span>`;
         }
     </script>
 </body>
