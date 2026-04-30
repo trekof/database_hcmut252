@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cashier Dashboard - Library Management</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         * {
             margin: 0;
@@ -219,6 +220,12 @@
             border-bottom: 2px solid #dee2e6;
         }
 
+        table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
         table td {
             padding: 10px;
             border-bottom: 1px solid #dee2e6;
@@ -316,39 +323,39 @@
 <body>
     <div class="container">
         <header>
-            <h1>💼 Cashier Dashboard</h1>
+            <h1><i class="fas fa-cash-register"></i> Cashier Dashboard</h1>
             <div class="user-info">
                 <span id="userDisplay"></span>
-                <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+                <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
             </div>
         </header>
 
         <!-- Statistics -->
         <div class="stats">
             <div class="stat-card">
-                <h3>🛍️ Customers</h3>
+                <h3><i class="fas fa-users"></i> Customers</h3>
                 <div class="number" id="stat-customers">-</div>
             </div>
             <div class="stat-card">
-                <h3>📦 Products</h3>
+                <h3><i class="fas fa-box"></i> Products</h3>
                 <div class="number" id="stat-products">-</div>
             </div>
             <div class="stat-card">
-                <h3>📖 Borrowing</h3>
+                <h3><i class="fas fa-book"></i> Borrowing</h3>
                 <div class="number" id="stat-borrowing">-</div>
             </div>
             <div class="stat-card">
-                <h3>💳 Rentals</h3>
+                <h3><i class="fas fa-credit-card"></i> Rentals</h3>
                 <div class="number" id="stat-rentals">-</div>
             </div>
         </div>
 
         <!-- Tabs Navigation -->
         <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('customers', event)">🛍️ Customers</button>
-            <button class="tab-btn" onclick="switchTab('products', event)">📦 Products</button>
-            <button class="tab-btn" onclick="switchTab('borrowing', event)">📖 Borrowing</button>
-            <button class="tab-btn" onclick="switchTab('rental', event)">💳 Rental</button>
+            <button class="tab-btn active" onclick="switchTab('customers', event)"><i class="fas fa-users"></i> Customers</button>
+            <button class="tab-btn" onclick="switchTab('products', event)"><i class="fas fa-box"></i> Products</button>
+            <button class="tab-btn" onclick="switchTab('borrowing', event)"><i class="fas fa-book"></i> Borrowing</button>
+            <button class="tab-btn" onclick="switchTab('rental', event)"><i class="fas fa-credit-card"></i> Rentals</button>
         </div>
 
         <!-- CUSTOMERS TAB -->
@@ -356,8 +363,8 @@
             <div class="alert" id="customers-alert"></div>
             <div class="content-section">
                 <div class="form-section">
-                    <h3>➕ Add Customer</h3>
-                    <div class="section-info">✅ You can create and manage customers</div>
+                    <h3><i class="fas fa-user-plus"></i> Add Customer</h3>
+                    <div class="section-info"><i class="fas fa-info-circle"></i> You can create and manage customers</div>
                     <form id="customers-form">
                         <div class="form-group">
                             <label>Phone</label>
@@ -368,14 +375,14 @@
                             <input type="number" id="cust-points" placeholder="0" min="0" value="0">
                         </div>
                         <div class="btn-group">
-                            <button type="submit">➕ Add</button>
-                            <button type="button" onclick="clearForm('customers-form')">Clear</button>
+                            <button type="submit"><i class="fas fa-plus"></i> Add</button>
+                            <button type="button" onclick="clearForm('customers-form')"><i class="fas fa-times"></i> Clear</button>
                         </div>
                     </form>
                 </div>
 
                 <div class="table-section">
-                    <h3>📋 All Customers</h3>
+                    <h3><i class="fas fa-users"></i> All Customers</h3>
                     <div class="search-box">
                         <input type="text" id="customers-search" placeholder="Search..." onkeyup="filterTable('customers')">
                     </div>
@@ -400,8 +407,8 @@
         <div id="products" class="tab-content">
             <div class="alert" id="products-alert"></div>
             <div class="table-section" style="padding: 20px;">
-                <h3>📦 Available Products</h3>
-                <div class="section-info">📖 You can view products but cannot modify them (Admin only)</div>
+                <h3><i class="fas fa-box"></i> Available Products</h3>
+                <div class="section-info"><i class="fas fa-info-circle"></i> You can view products but cannot modify them (Admin only)</div>
                 <div class="search-box">
                     <input type="text" id="products-search" placeholder="Search..." onkeyup="filterTable('products')">
                 </div>
@@ -426,8 +433,8 @@
         <div id="borrowing" class="tab-content">
             <div class="alert" id="borrowing-alert"></div>
             <div class="table-section" style="padding: 20px;">
-                <h3>📖 Borrowing Records</h3>
-                <div class="section-info">✅ You can manage borrowing transactions</div>
+                <h3><i class="fas fa-book"></i> Borrowing Records</h3>
+                <div class="section-info"><i class="fas fa-info-circle"></i> You can manage borrowing transactions</div>
                 <div class="search-box">
                     <input type="text" id="borrowing-search" placeholder="Search..." onkeyup="filterTable('borrowing')">
                 </div>
@@ -454,8 +461,8 @@
         <div id="rental" class="tab-content">
             <div class="alert" id="rental-alert"></div>
             <div class="table-section" style="padding: 20px;">
-                <h3>💳 Rental Records</h3>
-                <div class="section-info">✅ You can manage rental transactions</div>
+                <h3><i class="fas fa-credit-card"></i> Rental Records</h3>
+                <div class="section-info"><i class="fas fa-info-circle"></i> You can manage rental transactions</div>
                 <div class="search-box">
                     <input type="text" id="rental-search" placeholder="Search..." onkeyup="filterTable('rental')">
                 </div>
@@ -490,7 +497,7 @@
                 return;
             }
             
-            document.getElementById('userDisplay').textContent = `👤 ${currentUser.username} (Cashier)`;
+            document.getElementById('userDisplay').textContent = `Xin chào, ${currentUser.username} (Cashier)`;
             loadStats();
             loadCustomers();
         });
@@ -573,7 +580,7 @@
                 });
                 const data = await res.json();
                 if (res.ok) {
-                    showAlert('customers-alert', `✅ Customer ${data.IDKhachHang} added!`, 'success');
+                    showAlert('customers-alert', `Customer ${data.IDKhachHang} added!`, 'success');
                     clearForm('customers-form');
                     loadCustomers();
                     loadStats();
