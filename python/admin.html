@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - Library Management</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * {
             margin: 0;
@@ -223,6 +224,18 @@
             background: #f8f9fa;
         }
 
+        table thead th {
+            position: sticky;
+            top: 0;
+            background: #f8f9fa;
+            z-index: 10;
+            padding: 10px;
+            text-align: left;
+            color: #333;
+            font-weight: 600;
+            border-bottom: 2px solid #dee2e6;
+        }
+
         table th {
             padding: 10px;
             text-align: left;
@@ -242,8 +255,9 @@
 
         .actions {
             display: flex;
-            gap: 4px;
-            flex-wrap: wrap;
+            gap: 6px;
+            flex-wrap: nowrap; /* Ngăn chặn xuống dòng */
+            justify-content: flex-start;
         }
 
         .alert {
@@ -300,6 +314,7 @@
 
         .table-wrapper {
             overflow-x: auto;
+            max-height: 500px;
             max-height: 600px;
             overflow-y: auto;
         }
@@ -324,40 +339,40 @@
 <body>
     <div class="container">
         <header>
-            <h1>🎯 Admin Dashboard</h1>
+            <h1><i class="fas fa-bullseye"></i> Admin Dashboard</h1>
             <div class="user-info">
                 <span id="userDisplay"></span>
-                <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+                <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
             </div>
         </header>
 
         <!-- Statistics -->
         <div class="stats">
             <div class="stat-card">
-                <h3>👥 Employees</h3>
+                <h3><i class="fas fa-users"></i> Employees</h3>
                 <div class="number" id="stat-employees">-</div>
             </div>
             <div class="stat-card">
-                <h3>🛍️ Customers</h3>
+                <h3><i class="fas fa-shopping-bag"></i> Customers</h3>
                 <div class="number" id="stat-customers">-</div>
             </div>
             <div class="stat-card">
-                <h3>📦 Products</h3>
+                <h3><i class="fas fa-box-open"></i> Products</h3>
                 <div class="number" id="stat-products">-</div>
             </div>
             <div class="stat-card">
-                <h3>📋 Orders</h3>
+                <h3><i class="fas fa-list"></i> Orders</h3>
                 <div class="number" id="stat-orders">-</div>
             </div>
         </div>
 
         <!-- Tabs Navigation -->
         <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('employees', event)">👥 Employees</button>
-            <button class="tab-btn" onclick="switchTab('customers', event)">🛍️ Customers</button>
-            <button class="tab-btn" onclick="switchTab('products', event)">📦 Products</button>
-            <button class="tab-btn" onclick="switchTab('borrowing', event)">📖 Borrowing</button>
-            <button class="tab-btn" onclick="switchTab('rental', event)">💳 Rental</button>
+            <button class="tab-btn active" onclick="switchTab('employees', event)"><i class="fas fa-users"></i> Employees</button>
+            <button class="tab-btn" onclick="switchTab('customers', event)"><i class="fas fa-shopping-bag"></i> Customers</button>
+            <button class="tab-btn" onclick="switchTab('products', event)"><i class="fas fa-box-open"></i> Products</button>
+            <button class="tab-btn" onclick="switchTab('borrowing', event)"><i class="fas fa-book"></i> Borrowing</button>
+            <button class="tab-btn" onclick="switchTab('rental', event)"><i class="fas fa-credit-card"></i> Rental</button>
         </div>
 
         <!-- EMPLOYEES TAB -->
@@ -365,7 +380,7 @@
             <div class="alert" id="employees-alert"></div>
             <div class="content-section">
                 <div class="form-section">
-                    <h3>➕ Add New Employee</h3>
+                    <h3><i class="fas fa-user-plus"></i> Add New Employee</h3>
                     <form id="employees-form">
                         <div class="form-group">
                             <label>CMND/CCCD *</label>
@@ -419,14 +434,14 @@
                             <input type="text" id="emp-dept" placeholder="Department">
                         </div>
                         <div class="btn-group">
-                            <button type="submit">➕ Add</button>
-                            <button type="button" onclick="clearForm('employees-form')">Clear</button>
+                            <button type="submit"><i class="fas fa-user-plus"></i> Add</button>
+                            <button type="button" onclick="clearForm('employees-form')"><i class="fas fa-times"></i> Clear</button>
                         </div>
                     </form>
                 </div>
 
                 <div class="table-section">
-                    <h3>📋 All Employees</h3>
+                    <h3><i class="fas fa-users"></i> All Employees</h3>
                     <div class="search-box">
                         <input type="text" id="employees-search" placeholder="Search..." onkeyup="filterTable('employees')">
                     </div>
@@ -460,7 +475,7 @@
             <div class="alert" id="customers-alert"></div>
             <div class="content-section">
                 <div class="form-section">
-                    <h3>➕ Add Customer</h3>
+                    <h3><i class="fas fa-user-plus"></i> Add Customer</h3>
                     <form id="customers-form">
                         <div class="form-group">
                             <label>Phone</label>
@@ -471,14 +486,14 @@
                             <input type="number" id="cust-points" placeholder="0" min="0" value="0">
                         </div>
                         <div class="btn-group">
-                            <button type="submit">➕ Add</button>
-                            <button type="button" onclick="clearForm('customers-form')">Clear</button>
+                            <button type="submit"><i class="fas fa-user-plus"></i> Add</button>
+                            <button type="button" onclick="clearForm('customers-form')"><i class="fas fa-times"></i> Clear</button>
                         </div>
                     </form>
                 </div>
 
                 <div class="table-section">
-                    <h3>📋 All Customers</h3>
+                    <h3><i class="fas fa-shopping-bag"></i> All Customers</h3>
                     <div class="search-box">
                         <input type="text" id="customers-search" placeholder="Search..." onkeyup="filterTable('customers')">
                     </div>
@@ -509,7 +524,7 @@
             <div class="alert" id="products-alert"></div>
             <div class="content-section">
                 <div class="form-section">
-                    <h3>➕ Add Product</h3>
+                    <h3><i class="fas fa-box-plus"></i> Add Product</h3>
                     <form id="products-form">
                         <div class="form-group">
                             <label>Product Name *</label>
@@ -524,14 +539,14 @@
                             <input type="number" id="prod-price" placeholder="100000" min="0" step="1000">
                         </div>
                         <div class="btn-group">
-                            <button type="submit">➕ Add</button>
-                            <button type="button" onclick="clearForm('products-form')">Clear</button>
+                            <button type="submit"><i class="fas fa-box-plus"></i> Add</button>
+                            <button type="button" onclick="clearForm('products-form')"><i class="fas fa-times"></i> Clear</button>
                         </div>
                     </form>
                 </div>
 
                 <div class="table-section">
-                    <h3>📦 All Products</h3>
+                    <h3><i class="fas fa-box-open"></i> All Products</h3>
                     <div class="search-box">
                         <input type="text" id="products-search" placeholder="Search..." onkeyup="filterTable('products')">
                     </div>
@@ -558,7 +573,7 @@
         <div id="borrowing" class="tab-content">
             <div class="alert" id="borrowing-alert"></div>
             <div class="table-section" style="padding: 20px;">
-                <h3>📖 Borrowing Records</h3>
+                <h3><i class="fas fa-book"></i> Borrowing Records</h3>
                 <div class="search-box">
                     <input type="text" id="borrowing-search" placeholder="Search..." onkeyup="filterTable('borrowing')">
                 </div>
@@ -585,7 +600,7 @@
         <div id="rental" class="tab-content">
             <div class="alert" id="rental-alert"></div>
             <div class="table-section" style="padding: 20px;">
-                <h3>💳 Rental Records</h3>
+                <h3><i class="fas fa-credit-card"></i>   Rental Records</h3>
                 <div class="search-box">
                     <input type="text" id="rental-search" placeholder="Search..." onkeyup="filterTable('rental')">
                 </div>
@@ -621,7 +636,7 @@
                 return;
             }
             
-            document.getElementById('userDisplay').textContent = `👤 ${currentUser.username}`;
+            document.getElementById('userDisplay').textContent = `Xin chào, ${currentUser.username}`;
             loadStats();
             loadEmployees();
         });
@@ -682,15 +697,19 @@
                             <td>${e.CMND_CCCD || ''}</td>
                             <td>${e.Ho || ''} ${e.Ten || ''}</td>
                             <td>${e.GioiTinh || ''}</td>
-                            <td>${e.NgaySinh || ''}</td>
+                            <td>${formatDate(e.NgaySinh) || ''}</td>
                             <td>${e.CongViec || '-'}</td>
                             <td>${e.SDT || '-'}</td>
                             <td>${e.BoPhanQuanLy || '-'}</td>
                             <td>${e.IDQuanLy || '-'}</td>
-                            <td>${e.created_at || ''}</td>
+                            <td>${formatDate(e.created_at) || ''}</td>
                             <td class="actions">
-                                <button onclick="openDependents('${e.IDNhanVien}')">Dependents</button>
-                                <button class="delete-btn" onclick="deleteEmp('${e.IDNhanVien}')">Delete</button>
+                                <button onclick="openDependents('${e.IDNhanVien}')" title="Add/View Dependents">
+                                    <i class="fas fa-users"></i>
+                                </button>
+                                <button class="delete-btn" onclick="deleteEmp('${e.IDNhanVien}')" title="Delete Employee">
+                                    <i class="fas fa-trash"></i>
+                                </button>
                             </td>
                         </tr>
                     `;
@@ -726,7 +745,7 @@
                 });
                 const data = await res.json();
                 if (res.ok) {
-                    showAlert('employees-alert', `✅ Employee ${data.IDNhanVien} added!`, 'success');
+                    showAlert('employees-alert', `Employee ${data.IDNhanVien} added!`, 'success');
                     clearForm('employees-form');
                     loadEmployees();
                     loadStats();
@@ -851,8 +870,8 @@
                             <td>${c.DiaChi || ''}</td>
                             <td>${c.DiemTichLuy || 0}</td>
                             <td class="actions">
-                                <button onclick="viewCustomer('${c.IDKhachHang}')">View</button>
-                                <button class="delete-btn" onclick="deleteCust('${c.IDKhachHang}')">Delete</button>
+                                <button onclick="viewCustomer('${c.IDKhachHang}')"><i class="fas fa-eye"></i></button>
+                                <button class="delete-btn" onclick="deleteCust('${c.IDKhachHang}')"><i class="fas fa-trash"></i></button>
                             </td>
                         </tr>
                     `;
@@ -920,7 +939,7 @@
                 });
                 const data = await res.json();
                 if (res.ok) {
-                    showAlert('customers-alert', `✅ Customer ${data.IDKhachHang} added!`, 'success');
+                    showAlert('customers-alert', `Customer ${data.IDKhachHang} added!`, 'success');
                     clearForm('customers-form');
                     loadCustomers();
                     loadStats();
@@ -965,8 +984,8 @@
                             <td>${(p.GiaNiemYet || 0).toLocaleString('vi-VN')} ₫</td>
                             <td class="actions">
                                 <input type="number" id="admin-add-${p.IDVatPham}" placeholder="Qty" min="1" style="width:80px;padding:6px;border:1px solid #ddd;border-radius:4px;margin-right:6px">
-                                <button onclick="adminAddStock(${p.IDVatPham}, '${escapeHtml(p.TenVatPham)}', ${p.GiaNiemYet||0})" style="background:#17a2b8;padding:6px 8px;border-radius:6px;border:none;color:white;cursor:pointer">Add</button>
-                                <button class="delete-btn" onclick="deleteProd(${p.IDVatPham})">Delete</button>
+                                <button onclick="adminAddStock(${p.IDVatPham}, '${escapeHtml(p.TenVatPham)}', ${p.GiaNiemYet||0})" style="background:#17a2b8;padding:6px 8px;border-radius:6px;border:none;color:white;cursor:pointer"><i class="fas fa-plus"></i></button>
+                                <button class="delete-btn" onclick="deleteProd(${p.IDVatPham})"><i class="fas fa-trash"></i></button>
                             </td>
                         </tr>
                     `;
@@ -999,7 +1018,7 @@
                 if (!res.ok) throw new Error(j.error || 'Update failed');
                 document.getElementById(`avail-${id}`).textContent = newQty;
                 input.value = '';
-                showAlert('products-alert', `✅ Added ${delta} to ${name}`, 'success');
+                showAlert('products-alert', `Added ${delta} to ${name}`, 'success');
                 loadStats();
             } catch (err) {
                 showAlert('products-alert', 'Error: ' + err.message, 'error');
@@ -1025,7 +1044,7 @@
                 });
                 const data = await res.json();
                 if (res.ok) {
-                    showAlert('products-alert', `✅ Product ${data.IDVatPham} added!`, 'success');
+                    showAlert('products-alert', `Product ${data.IDVatPham} added!`, 'success');
                     clearForm('products-form');
                     loadProducts();
                     loadStats();
@@ -1069,7 +1088,7 @@
                             <td>${item.TenVatPham}</td>
                             <td>${item.NgayMuon}</td>
                             <td>${item.HanTra || '-'}</td>
-                            <td>${item.TinhTrangSauKhiTra || '-'}</td>
+                            <td>${colorize(item.TinhTrangSauKhiTra) || '-'}</td>
                         </tr>
                     `;
                 });
@@ -1135,6 +1154,31 @@
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             window.location.href = '/login.html';
+        }
+
+        // hàm cắt định dạng ngày tháng
+        function formatDate(dateString) {
+            try {
+                const d = new Date(dateString);
+                if (isNaN(d.getTime())) return dateString;
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            } catch (e) {
+                return dateString;
+            }
+        }
+
+        // tô màu tình trạng sau khi trả
+        function colorize(status) {
+            if (!status) return '';
+            const s = status.toLowerCase();
+            let color = '#333';
+            if (s.includes('good') || s.includes('tốt')) color = 'green';
+            else if (s.includes('damaged') || s.includes('hỏng')) color = 'red';
+            else if (s.includes('late') || s.includes('trễ')) color = 'orange';
+            return `<span style="color: ${color}; font-weight: bold;">${status}</span>`;
         }
     </script>
 </body>
