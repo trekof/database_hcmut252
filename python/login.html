@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Library Management - Login</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
         * {
             margin: 0;
@@ -183,9 +184,9 @@
 <body>
     <div class="login-container">
         <div class="logo">
-            <h1>📚</h1>
+            <h1><i class="fas fa-book"></i></h1>
             <h2>Library System</h2>
-            <p>Role-Based Management Portal</p>
+            <p>Login to continue</p>
         </div>
 
         <div class="alert" id="alert"></div>
@@ -201,22 +202,22 @@
                 <input type="password" id="password" name="password" placeholder="Enter password" required>
             </div>
 
-            <button type="submit">🔐 Login</button>
+            <button type="submit"><i class="fas fa-sign-in-alt"></i> Login</button>
             <div class="loading" id="loading">
                 <div class="spinner"></div>
             </div>
         </form>
 
         <div class="demo-users">
-            <h3>📋 Demo Accounts</h3>
+            <h3><i class="fas fa-user-friends"></i> Demo Accounts</h3>
             <button class="demo-btn admin" onclick="demoLogin('admin', 'admin123')">
-                👨‍💼 Admin - admin / admin123
+                <i class="fas fa-user-shield"></i> Admin - admin / admin123
             </button>
             <button class="demo-btn cashier" onclick="demoLogin('cashier', 'cashier123')">
-                👨‍💻 Cashier - cashier / cashier123
+                <i class="fas fa-user-cashier"></i> Cashier - cashier / cashier123
             </button>
             <button class="demo-btn customer" onclick="demoLogin('customer', 'customer123')">
-                👤 Customer - customer / customer123
+                <i class="fas fa-user"></i> Customer - customer / customer123
             </button>
         </div>
     </div>
