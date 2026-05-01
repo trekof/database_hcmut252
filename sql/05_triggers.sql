@@ -66,10 +66,10 @@ CREATE TRIGGER tr_on_lanmuon_after_update
 AFTER UPDATE ON LanMuon
 FOR EACH ROW
 BEGIN
+    DECLARE v_price DECIMAL(15,2);
+    DECLARE v_multiplier DECIMAL(4,2);
     -- If status changed to Hư or Mất
     IF NEW.TinhTrangSauKhiTra IN ('Hư', 'Mất') AND OLD.TinhTrangSauKhiTra NOT IN ('Hư','Mất') THEN
-        DECLARE v_price DECIMAL(15,2);
-        DECLARE v_multiplier DECIMAL(4,2);
         -- Get price
         SELECT GiaNiemYet INTO v_price FROM VatPham WHERE IDVatPham = NEW.IDVatPham;
         IF v_price IS NULL THEN
@@ -81,7 +81,7 @@ BEGIN
         ELSE
             SET v_multiplier = 1.5;
         END IF;
-        INSERT INTO BoThuong (IDVatPham, MaSoBanCopy, CCCD_CMND, MaDonMuon, SoTien, LyDo)
+        INSERT INTO BoiThuong (IDVatPham, MaSoBanCopy, CCCD_CMND, MaDonMuon, SoTien, LyDo)
         VALUES (NEW.IDVatPham, NEW.MaSoBanCopy, NEW.CCCD_CMND, NEW.MaDonMuon, v_price * v_multiplier, CONCAT('Bồi thường do trả: ', NEW.TinhTrangSauKhiTra));
     END IF;
 END;

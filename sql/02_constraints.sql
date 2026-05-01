@@ -20,9 +20,9 @@ CREATE INDEX idx_lanmuon_vatpham ON LanMuon(IDVatPham);
 CREATE INDEX idx_capnhat_nhanvien ON CapNhat(IDNhanVien);
 CREATE INDEX idx_capnhat_vatpham ON CapNhat(IDVatPham);
 
--- Table: BoThuong (bồi thường khi trả hư/mất)
-CREATE TABLE IF NOT EXISTS BoThuong (
-	IDBoThuong INT AUTO_INCREMENT PRIMARY KEY,
+-- Table: BoiThuong (bồi thường khi trả hư/mất)
+CREATE TABLE IF NOT EXISTS BoiThuong (
+	IDBoiThuong INT AUTO_INCREMENT PRIMARY KEY,
 	IDVatPham INT,
 	MaSoBanCopy VARCHAR(20),
 	CCCD_CMND VARCHAR(20),
