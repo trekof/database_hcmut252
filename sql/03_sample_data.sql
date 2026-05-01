@@ -174,4 +174,26 @@ INSERT INTO GiaHanThe (CCCD_CMND, MaThe, IDNhanVien, NgayGiaHan) VALUES
 ('444444444444',1,'NV001','2024-06-01'),
 ('555555555555',1,'NV001','2024-07-01');
 
+-- TEST ĐIỂM TÍCH LŨY
+INSERT INTO KhachHang (IDKhachHang, SDT, DiemTichLuy) 
+VALUES ('KH_TEST01', '0919123456', 0);
+
+INSERT INTO CaNhan (CCCD_CMND, IDKhachHang, Ho, Ten) 
+VALUES ('777777777777', 'KH_TEST01', 'Le', 'Khang');
+
+-- Thêm vật phẩm để bán
+INSERT INTO VatPham (TenVatPham, SoLuongKhaDung, GiaNiemYet) 
+VALUES ('May Tinh Xach Tay', 10, 25000000.00);
+
+INSERT INTO DonMuaHang (LoaiHoaDon, NgayMua, IDKhachHang) 
+VALUES ('Online', '2026-04-15', 'KH_TEST01');
+
+INSERT INTO DonHangChiTiet (IDDonMuaHang, IDVatPham, SoLuong, GiaLucMua) 
+VALUES (LAST_INSERT_ID(), 6, 1, 25000000.00);
+
+-- Kiểm tra điểm tích lũy sau khi mua hàng
+SELECT DiemTichLuy 
+FROM KhachHang 
+WHERE IDKhachHang = 'KH_TEST01';
+
 -- End sample data
