@@ -1,4 +1,3 @@
--- 03_sample_data.sql
 -- Thêm dữ liệu mẫu có ý nghĩa cho tất cả các bảng chính (mỗi dữ liêu có ít nhất 5 bản ghi)
 
 -- NHÂN VIÊN (>=5)

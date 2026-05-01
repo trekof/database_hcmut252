@@ -1,4 +1,3 @@
--- 04_procedures.sql
 -- Tạo PROCEDURE cho hệ thống quản lý bán hàng, giao hàng, cho thuê
 
 -- ===== NHÂN VIÊN (đã thêm validate)=====

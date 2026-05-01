@@ -1,4 +1,3 @@
--- 05_triggers.sql
 -- Tạo TRIGGER để tự động xử lý logic hệ thống
 
 -- Trigger: Kiểm tra số lượng khi thêm chi tiết đơn hàng

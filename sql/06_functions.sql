@@ -1,4 +1,3 @@
--- 06_functions.sql
 -- Tạo FUNCTION để tính toán hoặc xử lý dữ liệu
 
 -- Function: Tính tổng tiền một đơn hàng (không tính phí vận chuyển)

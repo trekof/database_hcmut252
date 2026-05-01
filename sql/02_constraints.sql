@@ -1,4 +1,3 @@
--- 02_constraints.sql
 -- Thêm UNIQUE constraints và Indexes
 
 -- Thêm unique index để đảm bảo dữ liệu không trùng lặp
