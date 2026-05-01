@@ -262,7 +262,8 @@ BEGIN
     VALUES (p_IDDonMuaHang, p_DiaChiNhanHang, p_TrangThai, p_PhiVanChuyen, p_IDNhanVien);
 END;
 
--- Procedure: Lấy danh sách giao hàng theo tài xế
+-- Procedure: Lấy danh sách giao hàng theo tài xế 
+-- Thoả yêu cầu truy vấn từ 2 bảng trở lên, có WHERE, ORDER BY
 CREATE PROCEDURE sp_get_giao_hang_by_taxi(IN p_IDNhanVien VARCHAR(20))
 BEGIN
     SELECT g.IDDonMuaHang, d.NgayMua, d.LoaiHoaDon, d.IDKhachHang, g.PhiVanChuyen
@@ -392,3 +393,27 @@ BEGIN
     WHERE d.IDKhachHang = p_IDKhachHang
     GROUP BY d.IDKhachHang;
 END;
+
+-- Procedure: Tính tổng doanh thu theo khách hàng với điều kiện lọc 
+-- Thoả yêu cầu truy vấn có Aggregate Function, GROUP BY, HAVING, WHERE, ORDER BY và liên kết từ 2 bảng trở lên
+CREATE PROCEDURE sp_get_doanh_thu_khach_hang_loc(
+    IN p_IDKhachHang VARCHAR(20),
+    IN p_MinDoanhThu DECIMAL(15,2)
+)
+BEGIN
+    SELECT 
+        d.IDKhachHang, 
+        k.SDT, 
+        COUNT(DISTINCT d.IDDonMuaHang) AS SoHoaDon,
+        SUM(ct.SoLuong * ct.GiaLucMua) AS TongDoanhThu,
+        SUM(COALESCE(g.PhiVanChuyen, 0)) AS TongPhiVanChuyen,
+        (SUM(ct.SoLuong * ct.GiaLucMua) + SUM(COALESCE(g.PhiVanChuyen, 0))) AS TongThanhToan
+    FROM DonMuaHang d
+    LEFT JOIN DonHangChiTiet ct ON d.IDDonMuaHang = ct.IDDonMuaHang
+    LEFT JOIN GiaoTanNha g ON d.IDDonMuaHang = g.IDDonMuaHang
+    LEFT JOIN KhachHang k ON d.IDKhachHang = k.IDKhachHang
+    WHERE d.IDKhachHang = p_IDKhachHang
+    GROUP BY d.IDKhachHang, k.SDT
+    HAVING TongDoanhThu >= p_MinDoanhThu
+    ORDER BY TongDoanhThu DESC;
+END
