@@ -22,3 +22,7 @@ wheels/
 .vscode/
 .idea/
 .DS_Store
+
+# Word lock / temporary files
+~$*.docx
+~$*.doc

@@ -292,3 +292,143 @@ BEGIN
     WHERE d.IDKhachHang = p_IDKhachHang
     GROUP BY d.IDKhachHang;
 END;
+
+CREATE PROCEDURE sp_btl21_vat_pham_insert(
+    IN p_TenVatPham VARCHAR(100),
+    IN p_SoLuongKhaDung INT,
+    IN p_GiaNiemYet DECIMAL(10, 2)
+)
+BEGIN
+    IF p_TenVatPham IS NULL OR CHAR_LENGTH(TRIM(p_TenVatPham)) = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Tên vật phẩm không được để trống';
+    END IF;
+
+    IF CHAR_LENGTH(TRIM(p_TenVatPham)) > 100 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Tên vật phẩm vượt quá 100 ký tự';
+    END IF;
+
+    IF p_SoLuongKhaDung IS NULL OR p_SoLuongKhaDung < 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Số lượng khả dụng không được âm và phải được nhập';
+    END IF;
+
+    IF p_GiaNiemYet IS NULL OR p_GiaNiemYet <= 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Giá niêm yết phải là số dương (lớn hơn 0)';
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM VatPham WHERE TenVatPham = TRIM(p_TenVatPham)) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Trùng tên vật phẩm (ràng buộc duy nhất TenVatPham)';
+    END IF;
+
+    INSERT INTO VatPham (TenVatPham, SoLuongKhaDung, GiaNiemYet)
+    VALUES (TRIM(p_TenVatPham), p_SoLuongKhaDung, p_GiaNiemYet);
+
+    SELECT LAST_INSERT_ID() AS IDVatPham;
+END;
+
+CREATE PROCEDURE sp_btl21_vat_pham_update(
+    IN p_IDVatPham INT,
+    IN p_TenVatPham VARCHAR(100),
+    IN p_SoLuongKhaDung INT,
+    IN p_GiaNiemYet DECIMAL(10, 2)
+)
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM VatPham WHERE IDVatPham = p_IDVatPham) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Vật phẩm không tồn tại (ID không hợp lệ)';
+    END IF;
+
+    IF p_TenVatPham IS NULL OR CHAR_LENGTH(TRIM(p_TenVatPham)) = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Tên vật phẩm không được để trống';
+    END IF;
+
+    IF CHAR_LENGTH(TRIM(p_TenVatPham)) > 100 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Tên vật phẩm vượt quá 100 ký tự';
+    END IF;
+
+    IF p_SoLuongKhaDung IS NULL OR p_SoLuongKhaDung < 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Số lượng khả dụng không được âm và phải được nhập';
+    END IF;
+
+    IF p_GiaNiemYet IS NULL OR p_GiaNiemYet <= 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Giá niêm yết phải là số dương (lớn hơn 0)';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM VatPham
+        WHERE TenVatPham = TRIM(p_TenVatPham) AND IDVatPham <> p_IDVatPham
+    ) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Trùng tên vật phẩm với một mặt hàng khác';
+    END IF;
+
+    UPDATE VatPham
+    SET TenVatPham = TRIM(p_TenVatPham),
+        SoLuongKhaDung = p_SoLuongKhaDung,
+        GiaNiemYet = p_GiaNiemYet
+    WHERE IDVatPham = p_IDVatPham;
+END;
+
+CREATE PROCEDURE sp_btl21_vat_pham_delete(IN p_IDVatPham INT)
+BEGIN
+    DECLARE v_od INT DEFAULT 0;
+
+    IF NOT EXISTS (SELECT 1 FROM VatPham WHERE IDVatPham = p_IDVatPham) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Vật phẩm không tồn tại (không thể xóa)';
+    END IF;
+
+    SELECT COUNT(*) INTO v_od FROM DonHangChiTiet WHERE IDVatPham = p_IDVatPham;
+    IF v_od > 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Không thể xóa: vật phẩm đã xuất hiện trong đơn hàng (DonHangChiTiet)';
+    END IF;
+
+    DELETE FROM VatPham WHERE IDVatPham = p_IDVatPham;
+END;
+
+CREATE PROCEDURE sp_btl23_tim_sach(
+    IN p_tu_khoa VARCHAR(100),
+    IN p_nam_xb_min INT,
+    IN p_nam_xb_max INT,
+    IN p_gia_min DECIMAL(10, 2),
+    IN p_gia_max DECIMAL(10, 2)
+)
+BEGIN
+    SELECT
+        vp.IDVatPham,
+        vp.TenVatPham,
+        vp.SoLuongKhaDung,
+        vp.GiaNiemYet,
+        s.NamXB,
+        s.TacGia,
+        s.NXB
+    FROM VatPham vp
+    INNER JOIN Sach s ON vp.IDVatPham = s.IDVatPham
+    WHERE
+        (p_tu_khoa IS NULL OR TRIM(p_tu_khoa) = '' OR
+         vp.TenVatPham LIKE CONCAT('%', TRIM(p_tu_khoa), '%') OR
+         s.TacGia LIKE CONCAT('%', TRIM(p_tu_khoa), '%'))
+        AND (p_nam_xb_min IS NULL OR s.NamXB >= p_nam_xb_min)
+        AND (p_nam_xb_max IS NULL OR s.NamXB <= p_nam_xb_max)
+        AND (p_gia_min IS NULL OR vp.GiaNiemYet >= p_gia_min)
+        AND (p_gia_max IS NULL OR vp.GiaNiemYet <= p_gia_max)
+    ORDER BY vp.GiaNiemYet ASC, vp.TenVatPham ASC;
+END;
+
+CREATE PROCEDURE sp_btl23_thong_ke_ban_vat_pham(
+    IN p_tu_ngay DATE,
+    IN p_den_ngay DATE,
+    IN p_doanh_toi_thieu DECIMAL(15, 2)
+)
+BEGIN
+    SELECT
+        vp.IDVatPham,
+        vp.TenVatPham,
+        SUM(ct.SoLuong * ct.GiaLucMua) AS TongDoanh,
+        SUM(ct.SoLuong) AS TongSoLuongBan
+    FROM VatPham vp
+    INNER JOIN DonHangChiTiet ct ON vp.IDVatPham = ct.IDVatPham
+    INNER JOIN DonMuaHang d ON ct.IDDonMuaHang = d.IDDonMuaHang
+    WHERE
+        (p_tu_ngay IS NULL OR d.NgayMua >= p_tu_ngay)
+        AND (p_den_ngay IS NULL OR d.NgayMua <= p_den_ngay)
+    GROUP BY vp.IDVatPham, vp.TenVatPham
+    HAVING SUM(ct.SoLuong * ct.GiaLucMua) >= IFNULL(p_doanh_toi_thieu, 0)
+    ORDER BY TongDoanh DESC;
+END;

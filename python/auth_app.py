@@ -6,35 +6,72 @@ Uses JWT tokens for session management
 
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-import mysql.connector
-from dotenv import load_dotenv
 import os
+
+from db import get_mysql_conn as get_db_connection
 from datetime import datetime, timedelta, date
 import re
 import jwt
 import json
 from functools import wraps
 
-# Load environment variables
-load_dotenv()
+import mysql.connector
+from mysql.connector import Error
+
+
+def _call_proc(conn, name, args):
+    """Gọi stored procedure; trả về tất cả hàng từ các result set (SELECT)."""
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.callproc(name, args)
+        rows = []
+        for res in cur.stored_results():
+            rows.extend(res.fetchall())
+        conn.commit()
+        return rows
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        cur.close()
+
+
+def _proc_http_error(e):
+    if isinstance(e, Error):
+        return jsonify({"error": e.msg}), 400
+    return jsonify({"error": str(e)}), 500
+
+
+def _arg_optional_int(qs, key):
+    v = qs.get(key)
+    if v is None or str(v).strip() == "":
+        return None
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def _arg_optional_float(qs, key):
+    v = qs.get(key)
+    if v is None or str(v).strip() == "":
+        return None
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def _arg_optional_str(qs, key):
+    v = qs.get(key)
+    if v is None:
+        return None
+    s = str(v).strip()
+    return None if s == "" else s
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'your-secret-key-change-in-production')
 CORS(app)
-
-# MySQL Configuration
-MYSQL_CONFIG = {
-    "host": os.getenv("MYSQL_HOST"),
-    "port": int(os.getenv("MYSQL_PORT", 3306)),
-    "database": os.getenv("MYSQL_DB"),
-    "user": os.getenv("MYSQL_USER"),
-    "password": os.getenv("MYSQL_PASSWORD"),
-    "autocommit": False
-}
-
-def get_db_connection():
-    """Get MySQL connection"""
-    return mysql.connector.connect(**MYSQL_CONFIG)
 
 # ==================== AUTH HELPERS ====================
 
@@ -827,82 +864,134 @@ def get_product(id):
 @app.route('/api/products', methods=['POST'])
 @require_role('Admin')
 def create_product():
-    """Create new product (Admin only)"""
+    """Create new product (Admin only) — gọi sp_btl21_vat_pham_insert"""
     try:
         data = request.json
         conn = get_db_connection()
-        cur = conn.cursor()
-        
-        query = """
-            INSERT INTO VatPham 
-            (TenVatPham, SoLuongKhaDung, GiaNiemYet)
-            VALUES (%s, %s, %s)
-        """
-        
-        cur.execute(query, (
-            data['TenVatPham'],
-            data.get('SoLuongKhaDung', 0),
-            data.get('GiaNiemYet', 0)
-        ))
-        
-        product_id = cur.lastrowid
-        conn.commit()
-        cur.close()
-        conn.close()
-        
+        try:
+            rows = _call_proc(
+                conn,
+                "sp_btl21_vat_pham_insert",
+                [
+                    data.get("TenVatPham"),
+                    int(data.get("SoLuongKhaDung", 0)),
+                    float(data.get("GiaNiemYet", 0)),
+                ],
+            )
+        except Error as e:
+            return _proc_http_error(e)
+        finally:
+            conn.close()
+
+        new_id = None
+        if rows and rows[0].get("IDVatPham") is not None:
+            new_id = int(rows[0]["IDVatPham"])
         return jsonify({
             "message": "Product created successfully",
-            "IDVatPham": product_id
+            "IDVatPham": new_id,
         }), 201
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _proc_http_error(e)
 
 @app.route('/api/products/<int:id>', methods=['PUT'])
 @require_role('Admin')
 def update_product(id):
-    """Update product (Admin only)"""
+    """Update product (Admin only) — gọi sp_btl21_vat_pham_update"""
     try:
         data = request.json
         conn = get_db_connection()
-        cur = conn.cursor()
-        
-        query = """
-            UPDATE VatPham 
-            SET TenVatPham=%s, SoLuongKhaDung=%s, GiaNiemYet=%s
-            WHERE IDVatPham=%s
-        """
-        
-        cur.execute(query, (
-            data.get('TenVatPham'),
-            data.get('SoLuongKhaDung'),
-            data.get('GiaNiemYet'),
-            id
-        ))
-        
-        conn.commit()
-        cur.close()
-        conn.close()
-        
+        try:
+            _call_proc(
+                conn,
+                "sp_btl21_vat_pham_update",
+                [
+                    id,
+                    data.get("TenVatPham"),
+                    int(data.get("SoLuongKhaDung", 0)),
+                    float(data.get("GiaNiemYet", 0)),
+                ],
+            )
+        except Error as e:
+            return _proc_http_error(e)
+        finally:
+            conn.close()
+
         return jsonify({"message": "Product updated successfully"}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _proc_http_error(e)
 
 @app.route('/api/products/<int:id>', methods=['DELETE'])
 @require_role('Admin')
 def delete_product(id):
-    """Delete product (Admin only)"""
+    """Delete product (Admin only) — gọi sp_btl21_vat_pham_delete"""
     try:
         conn = get_db_connection()
-        cur = conn.cursor()
-        
-        cur.execute("DELETE FROM VatPham WHERE IDVatPham=%s", (id,))
-        conn.commit()
-        cur.close()
-        conn.close()
-        
+        try:
+            _call_proc(conn, "sp_btl21_vat_pham_delete", [id])
+        except Error as e:
+            return _proc_http_error(e)
+        finally:
+            conn.close()
+
         return jsonify({"message": "Product deleted successfully"}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _proc_http_error(e)
+
+
+@app.route("/api/products/search-books", methods=["GET"])
+@require_auth
+def products_search_books():
+    """BTL 2.3 — tìm sách (VatPham JOIN Sach), tham số lọc từ query string."""
+    try:
+        q = request.args
+        conn = get_db_connection()
+        try:
+            rows = _call_proc(
+                conn,
+                "sp_btl23_tim_sach",
+                [
+                    _arg_optional_str(q, "tu_khoa"),
+                    _arg_optional_int(q, "nam_xb_min"),
+                    _arg_optional_int(q, "nam_xb_max"),
+                    _arg_optional_float(q, "gia_min"),
+                    _arg_optional_float(q, "gia_max"),
+                ],
+            )
+        finally:
+            conn.close()
+        rows = convert_decimal_and_dates(rows)
+        return jsonify(rows), 200
+    except Error as e:
+        return _proc_http_error(e)
+    except Exception as e:
+        return _proc_http_error(e)
+
+
+@app.route("/api/products/stats-sales", methods=["GET"])
+@require_auth
+def products_stats_sales():
+    """BTL 2.3 — thống kê bán theo vật phẩm (GROUP BY, HAVING)."""
+    try:
+        q = request.args
+        tu_ngay = _arg_optional_str(q, "tu_ngay")
+        den_ngay = _arg_optional_str(q, "den_ngay")
+        doanh_tt = _arg_optional_float(q, "doanh_toi_thieu")
+
+        conn = get_db_connection()
+        try:
+            rows = _call_proc(
+                conn,
+                "sp_btl23_thong_ke_ban_vat_pham",
+                [tu_ngay, den_ngay, doanh_tt],
+            )
+        finally:
+            conn.close()
+        rows = convert_decimal_and_dates(rows)
+        return jsonify(rows), 200
+    except Error as e:
+        return _proc_http_error(e)
+    except Exception as e:
+        return _proc_http_error(e)
 
 # ==================== BORROWING (RENTAL for customers/staff) ====================
 

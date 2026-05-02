@@ -552,6 +552,49 @@
                     </div>
                 </div>
             </div>
+
+            <div class="table-section" style="margin-top: 24px; padding-top: 20px; border-top: 1px solid #eee;">
+                <h3>🔍 Tìm sách (thủ tục 2.3 — VatPham + Sach)</h3>
+                <p style="font-size:0.9em; color:#666; margin-bottom:12px;">Tham số lọc tương ứng WHERE / ORDER BY. Để trống = không lọc theo trường đó.</p>
+                <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap:10px; margin-bottom:12px;">
+                    <div class="form-group" style="margin:0"><label>Từ khóa (tên / tác giả)</label><input type="text" id="b23-kw" placeholder="VD: Sách"></div>
+                    <div class="form-group" style="margin:0"><label>Năm XB từ</label><input type="number" id="b23-y1" placeholder="2010" min="1900" max="2100"></div>
+                    <div class="form-group" style="margin:0"><label>Năm XB đến</label><input type="number" id="b23-y2" placeholder="2026" min="1900" max="2100"></div>
+                    <div class="form-group" style="margin:0"><label>Giá từ (₫)</label><input type="number" id="b23-p1" placeholder="0" min="0" step="1000"></div>
+                    <div class="form-group" style="margin:0"><label>Giá đến (₫)</label><input type="number" id="b23-p2" placeholder="999999999" min="0" step="1000"></div>
+                </div>
+                <button type="button" onclick="runSearchBooks()">Tìm kiếm</button>
+                <div id="b23-search-wrap" style="margin-top:16px; display:none;" class="table-wrapper">
+                    <table id="b23-search-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th><th>Tên</th><th>Tồn</th><th>Giá</th><th>Năm XB</th><th>Tác giả</th><th>NXB</th>
+                            </tr>
+                        </thead>
+                        <tbody id="b23-search-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="table-section" style="margin-top: 20px;">
+                <h3>📊 Thống kê bán theo vật phẩm (2.3 — GROUP BY / HAVING)</h3>
+                <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap:10px; margin-bottom:12px;">
+                    <div class="form-group" style="margin:0"><label>Từ ngày</label><input type="date" id="b23-d1"></div>
+                    <div class="form-group" style="margin:0"><label>Đến ngày</label><input type="date" id="b23-d2"></div>
+                    <div class="form-group" style="margin:0"><label>Doanh tối thiểu (HAVING, ₫)</label><input type="number" id="b23-minrev" placeholder="0" min="0" step="1000" value="0"></div>
+                </div>
+                <button type="button" onclick="runStatsSales()">Xem thống kê</button>
+                <div id="b23-stats-wrap" style="margin-top:16px; display:none;" class="table-wrapper">
+                    <table id="b23-stats-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th><th>Tên vật phẩm</th><th>Tổng doanh</th><th>Tổng SL bán</th>
+                            </tr>
+                        </thead>
+                        <tbody id="b23-stats-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
         <!-- BORROWING TAB -->
@@ -1024,12 +1067,14 @@
                     })
                 });
                 const data = await res.json();
-                if (res.ok) {
-                    showAlert('products-alert', `✅ Product ${data.IDVatPham} added!`, 'success');
-                    clearForm('products-form');
-                    loadProducts();
-                    loadStats();
+                if (!res.ok) {
+                    showAlert('products-alert', data.error || 'Không thêm được sản phẩm', 'error');
+                    return;
                 }
+                showAlert('products-alert', `✅ Product ${data.IDVatPham} added!`, 'success');
+                clearForm('products-form');
+                loadProducts();
+                loadStats();
             } catch (e) {
                 showAlert('products-alert', 'Error: ' + e, 'error');
             }
@@ -1042,11 +1087,95 @@
                     method: 'DELETE',
                     headers: getAuthHeader()
                 });
-                if (res.ok) {
-                    showAlert('products-alert', 'Product deleted!', 'success');
-                    loadProducts();
-                    loadStats();
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    showAlert('products-alert', data.error || 'Xóa thất bại', 'error');
+                    return;
                 }
+                showAlert('products-alert', 'Product deleted!', 'success');
+                loadProducts();
+                loadStats();
+            } catch (e) {
+                showAlert('products-alert', 'Error: ' + e, 'error');
+            }
+        }
+
+        function _appendParam(params, key, el) {
+            if (!el) return;
+            const v = el.value;
+            if (v !== undefined && v !== null && String(v).trim() !== '') params.append(key, v);
+        }
+
+        async function runSearchBooks() {
+            const params = new URLSearchParams();
+            _appendParam(params, 'tu_khoa', document.getElementById('b23-kw'));
+            _appendParam(params, 'nam_xb_min', document.getElementById('b23-y1'));
+            _appendParam(params, 'nam_xb_max', document.getElementById('b23-y2'));
+            _appendParam(params, 'gia_min', document.getElementById('b23-p1'));
+            _appendParam(params, 'gia_max', document.getElementById('b23-p2'));
+            try {
+                const res = await fetch(`${API_URL}/products/search-books?${params.toString()}`, { headers: getAuthHeader() });
+                const data = await res.json();
+                if (!res.ok) {
+                    showAlert('products-alert', data.error || 'Lỗi tìm kiếm', 'error');
+                    return;
+                }
+                const tb = document.getElementById('b23-search-tbody');
+                tb.innerHTML = '';
+                if (!data.length) {
+                    tb.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:12px;color:#999">Không có bản ghi (chỉ hiển thị sách — bảng Sach)</td></tr>';
+                } else {
+                    data.forEach(r => {
+                        tb.innerHTML += `<tr>
+                            <td>${r.IDVatPham}</td>
+                            <td>${escapeAttr(r.TenVatPham)}</td>
+                            <td>${r.SoLuongKhaDung ?? ''}</td>
+                            <td>${r.GiaNiemYet != null ? Number(r.GiaNiemYet).toLocaleString('vi-VN') : ''}</td>
+                            <td>${r.NamXB ?? ''}</td>
+                            <td>${escapeAttr(r.TacGia || '')}</td>
+                            <td>${escapeAttr(r.NXB || '')}</td>
+                        </tr>`;
+                    });
+                }
+                document.getElementById('b23-search-wrap').style.display = 'block';
+            } catch (e) {
+                showAlert('products-alert', 'Error: ' + e, 'error');
+            }
+        }
+
+        function escapeAttr(s) {
+            return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+        }
+
+        async function runStatsSales() {
+            const params = new URLSearchParams();
+            _appendParam(params, 'tu_ngay', document.getElementById('b23-d1'));
+            _appendParam(params, 'den_ngay', document.getElementById('b23-d2'));
+            const minEl = document.getElementById('b23-minrev');
+            if (minEl && minEl.value !== '' && minEl.value != null) params.append('doanh_toi_thieu', minEl.value);
+            try {
+                const res = await fetch(`${API_URL}/products/stats-sales?${params.toString()}`, { headers: getAuthHeader() });
+                const data = await res.json();
+                if (!res.ok) {
+                    showAlert('products-alert', data.error || 'Lỗi thống kê', 'error');
+                    return;
+                }
+                const tb = document.getElementById('b23-stats-tbody');
+                tb.innerHTML = '';
+                if (!data.length) {
+                    tb.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:12px;color:#999">Không có dữ liệu trong khoảng lọc / ngưỡng HAVING</td></tr>';
+                } else {
+                    data.forEach(r => {
+                        const td = r.TongDoanh != null ? Number(r.TongDoanh).toLocaleString('vi-VN') : '';
+                        tb.innerHTML += `<tr>
+                            <td>${r.IDVatPham}</td>
+                            <td>${escapeAttr(r.TenVatPham)}</td>
+                            <td>${td}</td>
+                            <td>${r.TongSoLuongBan ?? ''}</td>
+                        </tr>`;
+                    });
+                }
+                document.getElementById('b23-stats-wrap').style.display = 'block';
             } catch (e) {
                 showAlert('products-alert', 'Error: ' + e, 'error');
             }
