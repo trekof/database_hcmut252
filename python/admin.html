@@ -422,7 +422,7 @@
 
                         <div class="form-group">
                             <label>Birthdate</label>
-                            <input type="date" id="emp-dob">
+                            <input type="date" id="emp-dob" required>
                         </div>
 
                         <div class="form-group">
@@ -786,6 +786,11 @@
         document.getElementById('employees-form')?.addEventListener('submit', async (e) => {
             e.preventDefault();
             try {
+                // client-side required check for birthdate and age >= 18
+                const dob = document.getElementById('emp-dob').value;
+                if (!dob) { showAlert('employees-alert', 'Birthdate is required', 'error'); return; }
+                const age = calculateAge(dob);
+                if (age < 18) { showAlert('employees-alert', 'Employee must be at least 18 years old', 'error'); return; }
                 const res = await fetch(`${API_URL}/employees`, {
                     method: 'POST',
                     headers: getAuthHeader(),
@@ -983,15 +988,18 @@
         function closeCustomerDetail(){ const p = document.getElementById('customer-detail-panel'); if(p) p.remove(); }
 
         function populateManagerSelect(emps){
-            const sel = document.getElementById('emp-manager');
-            if(!sel) return;
-            sel.innerHTML = '<option value="">-- None --</option>';
-            emps.forEach(e=>{
-                const opt = document.createElement('option');
-                opt.value = e.IDNhanVien;
-                opt.text = `${e.IDNhanVien} - ${e.Ho} ${e.Ten} (${e.CongViec||''})`;
-                if(e.CongViec) opt.dataset.congviec = e.CongViec;
-                sel.appendChild(opt);
+            const selIds = ['emp-manager','edit-emp-manager'];
+            selIds.forEach(selId=>{
+                const sel = document.getElementById(selId);
+                if(!sel) return;
+                sel.innerHTML = '<option value="">-- None --</option>';
+                emps.forEach(e=>{
+                    const opt = document.createElement('option');
+                    opt.value = e.IDNhanVien;
+                    opt.text = `${e.IDNhanVien} - ${e.Ho} ${e.Ten} (${e.CongViec||''})`;
+                    if(e.CongViec) opt.dataset.congviec = e.CongViec;
+                    sel.appendChild(opt);
+                });
             });
         }
 
@@ -1233,27 +1241,27 @@
             try {
                 const res = await fetch(`${API_URL}/borrowing`, { headers: getAuthHeader() });
                 const items = await res.json();
-                
+
                 const tbody = document.getElementById('borrowing-tbody');
                 tbody.innerHTML = '';
-                
-                items.forEach(item => {
-                    tbody.innerHTML += `
-                        <tr>
-                            <td>${item.MaDonMuon || '-'}</td>
-                            <td>${item.IDKhachHang}</td>
-                            <td>${item.TenVatPham}</td>
-                            <td>${item.NgayMuon}</td>
-                            <td>${item.HanTra || '-'}</td>
-                            <td>${colorize(item.TinhTrangSauKhiTra) || '-'}</td>
-                        </tr>
-                    `;
-                });
-                
-                if (items.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: #999;">No borrowing records</td></tr>';
+
+                if (!items || items.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:12px;color:#999">No borrowing records</td></tr>';
+                } else {
+                    items.forEach(item => {
+                        tbody.innerHTML += `
+                            <tr>
+                                <td>${item.MaDonMuon || '-'}</td>
+                                <td>${item.IDKhachHang || '-'}</td>
+                                <td>${item.TenVatPham || '-'}</td>
+                                <td>${item.NgayMuon || '-'}</td>
+                                <td>${item.HanTra || '-'}</td>
+                                <td>${colorize(item.TinhTrangSauKhiTra) || '-'}</td>
+                            </tr>
+                        `;
+                    });
                 }
-                
+
                 document.getElementById('borrowing-loading').style.display = 'none';
                 document.getElementById('borrowing-table').style.display = 'table';
             } catch (e) {
@@ -1299,6 +1307,18 @@
             document.getElementById(id).reset();
         }
 
+        function calculateAge(dobString){
+            try{
+                const d = new Date(dobString);
+                if(isNaN(d.getTime())) return 0;
+                const today = new Date();
+                let age = today.getFullYear() - d.getFullYear();
+                const m = today.getMonth() - d.getMonth();
+                if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--;
+                return age;
+            }catch(e){ return 0; }
+        }
+
         function filterTable(tab) {
             const search = document.getElementById(`${tab}-search`).value.toLowerCase();
             const rows = document.querySelectorAll(`#${tab}-tbody tr`);
@@ -1338,16 +1358,28 @@
             return `<span style="color: ${color}; font-weight: bold;">${status}</span>`;
         }
 
-        // Hàm mở ô chỉnh sửa và điền thông tin cũ vào
-        function openEditEmp(id, ho, ten, sdt, congviec) {
-            document.getElementById('edit-emp-id').value = id;
-            document.getElementById('edit-emp-id-display').textContent = id;
-            document.getElementById('edit-emp-ho').value = ho || '';
-            document.getElementById('edit-emp-ten').value = ten || '';
-            document.getElementById('edit-emp-phone').value = sdt || '';
-            document.getElementById('edit-emp-job').value = congviec || 'QuanTriVien';
-            
-            document.getElementById('edit-emp-modal').style.display = 'block';
+        // Hàm mở ô chỉnh sửa và điền thông tin cũ vào (fetch từ API)
+        async function openEditEmp(id) {
+            try {
+                const res = await fetch(`${API_URL}/employees/${id}`, { headers: getAuthHeader() });
+                if (!res.ok) throw new Error('Failed to fetch');
+                const e = await res.json();
+                document.getElementById('edit-emp-id').value = id;
+                document.getElementById('edit-emp-id-display').textContent = id;
+                document.getElementById('edit-emp-cmnd').value = e.CMND_CCCD || '';
+                document.getElementById('edit-emp-ho').value = e.Ho || '';
+                document.getElementById('edit-emp-ten').value = e.Ten || '';
+                document.getElementById('edit-emp-phone').value = e.SDT || '';
+                document.getElementById('edit-emp-job').value = e.CongViec || 'QuanTriVien';
+                document.getElementById('edit-emp-gender').value = e.GioiTinh || '';
+                document.getElementById('edit-emp-dob').value = formatDate(e.NgaySinh) || '';
+                // populate manager select is already filled by loadEmployees
+                document.getElementById('edit-emp-manager').value = e.IDQuanLy || '';
+                document.getElementById('edit-emp-dept').value = e.BoPhanQuanLy || '';
+                document.getElementById('edit-emp-modal').style.display = 'block';
+            } catch (err) {
+                showAlert('employees-alert', 'Error opening edit dialog', 'error');
+            }
         }
 
         // Đảm bảo code này chạy sau khi DOM đã load
@@ -1359,11 +1391,22 @@
                     
                     const empId = document.getElementById('edit-emp-id').value;
                     const payload = {
+                        CMND_CCCD: document.getElementById('edit-emp-cmnd').value,
                         Ho: document.getElementById('edit-emp-ho').value,
                         Ten: document.getElementById('edit-emp-ten').value,
                         SDT: document.getElementById('edit-emp-phone').value,
-                        CongViec: document.getElementById('edit-emp-job').value
+                        CongViec: document.getElementById('edit-emp-job').value,
+                        GioiTinh: document.getElementById('edit-emp-gender').value,
+                        NgaySinh: document.getElementById('edit-emp-dob').value,
+                        IDQuanLy: document.getElementById('edit-emp-manager').value || null,
+                        BoPhanQuanLy: document.getElementById('edit-emp-dept').value || null
                     };
+
+                    // client-side age check
+                    const dobVal = document.getElementById('edit-emp-dob').value;
+                    const ageVal = calculateAge(dobVal);
+                    if (!dobVal) { alert('Birthdate is required'); return; }
+                    if (ageVal < 18) { alert('Employee must be at least 18 years old'); return; }
 
                     try {
                         const res = await fetch(`${API_URL}/employees/${empId}`, {
@@ -1386,12 +1429,25 @@
                 };
             }
         });
+
+        // auto-fill edit manager -> dept
+        document.getElementById('edit-emp-manager')?.addEventListener('change', (ev)=>{
+            const sel = ev.target;
+            const opt = sel.options[sel.selectedIndex];
+            if(opt && opt.dataset && opt.dataset.congviec){
+                document.getElementById('edit-emp-dept').value = opt.dataset.congviec;
+            }
+        });
     </script>
     <div id="edit-emp-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
         <div style="background:white; max-width:500px; margin:50px auto; padding:20px; border-radius:8px;">
             <h3><i class="fas fa-edit"></i> Edit Employee <span id="edit-emp-id-display"></span></h3>
             <form id="edit-employees-form">
                 <input type="hidden" id="edit-emp-id">
+                <div class="form-group">
+                    <label>CMND/CCCD</label>
+                    <input type="text" id="edit-emp-cmnd" required>
+                </div>
                 <div class="form-group">
                     <label>Last Name</label>
                     <input type="text" id="edit-emp-ho" required>
@@ -1405,12 +1461,34 @@
                     <input type="tel" id="edit-emp-phone">
                 </div>
                 <div class="form-group">
+                    <label>Gender</label>
+                    <select id="edit-emp-gender">
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Birthdate</label>
+                    <input type="date" id="edit-emp-dob" required>
+                </div>
+                <div class="form-group">
                     <label>Job Title</label>
                     <select id="edit-emp-job">
                         <option value="QuanTriVien">QuanTriVien</option>
                         <option value="NhanVienDungQuay">NhanVienDungQuay</option>
                         <option value="TaiXeChuyenHang">TaiXeChuyenHang</option>
+                        <option value="KeToan">KeToan</option>
+                        <option value="ThuNgan">ThuNgan</option>
                     </select>
+                </div>
+                <div class="form-group">
+                    <label>Manager (ID)</label>
+                    <select id="edit-emp-manager"><option value="">-- None --</option></select>
+                </div>
+                <div class="form-group">
+                    <label>Department (auto from manager)</label>
+                    <input type="text" id="edit-emp-dept">
                 </div>
                 <div class="btn-group">
                     <button type="submit">Update</button>

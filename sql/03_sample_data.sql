@@ -10,7 +10,7 @@ INSERT INTO NhanVien (IDNhanVien, CMND_CCCD, CongViec, GioiTinh, NgaySinh, SDT, 
 
 -- PHỤ LỤC CHUYÊN MÔN
 INSERT INTO QuanTriVien (IDNhanVien, CapBac) VALUES
-('NV001', 1),('NV005', 2);
+('NV001', 1),('NV005', 2),('NV002',1),('NV003',1);
 
 INSERT INTO NhanVienDungQuay (IDNhanVien, NamKinhNghiep) VALUES
 ('NV002', 5),('NV004', 3);
@@ -74,6 +74,17 @@ INSERT INTO VatPham (TenVatPham, SoLuongKhaDung, GiaNiemYet) VALUES
 ('A4 Paper Pad',50,45000.00),
 ('Javascript Handbook',7,180000.00);
 
+-- Additional products to support magazines and office supplies used below (IDs 6..13)
+INSERT INTO VatPham (TenVatPham, SoLuongKhaDung, GiaNiemYet) VALUES
+('Tech Today Magazine',15,15000.00), -- ID 6
+('Office Weekly',12,12000.00),       -- ID 7
+('Global News',10,20000.00),         -- ID 8
+('Business Daily',8,18000.00),       -- ID 9
+('Stapler Pro',25,50000.00),         -- ID 10
+('Highlighter Pack',40,30000.00),   -- ID 11
+('Ballpoint Pen Set',60,15000.00),  -- ID 12
+('Printer Paper A4 80gsm',100,90000.00); -- ID 13
+
 -- SÁCH / BÁO / VPP
 INSERT INTO Sach (IDVatPham, NamXB, TacGia, NXB) VALUES
 (1,2010,'Robert C. Martin','Prentice Hall'),
@@ -103,6 +114,11 @@ INSERT INTO BanCopy (IDVatPham, MaSoBanCopy, TinhTrang) VALUES
 (1,'BC003','Fair'),
 (2,'BC001','Good'),
 (2,'BC002','Damaged');
+
+-- Add copies for product ID 5 used in LanMuon entries
+INSERT INTO BanCopy (IDVatPham, MaSoBanCopy, TinhTrang) VALUES
+(5,'BC001','Good'),
+(5,'BC002','Good');
 
 -- ĐỢT GIẢM GIÁ
 INSERT INTO DotGiamGia (IDVatPham, NgayBatDau, NgayKetThuc, PhanTramGiamGia) VALUES
@@ -180,15 +196,17 @@ VALUES ('KH_TEST01', '0919123456', 0);
 INSERT INTO CaNhan (CCCD_CMND, IDKhachHang, Ho, Ten) 
 VALUES ('777777777777', 'KH_TEST01', 'Le', 'Khang');
 
--- Thêm vật phẩm để bán
+-- Thêm một vật phẩm mới và tạo đơn hàng tham chiếu chính xác
 INSERT INTO VatPham (TenVatPham, SoLuongKhaDung, GiaNiemYet) 
 VALUES ('May Tinh Xach Tay', 10, 25000000.00);
+SET @vat_new_id = LAST_INSERT_ID();
 
 INSERT INTO DonMuaHang (LoaiHoaDon, NgayMua, IDKhachHang) 
 VALUES ('Online', '2026-04-15', 'KH_TEST01');
+SET @order_new_id = LAST_INSERT_ID();
 
 INSERT INTO DonHangChiTiet (IDDonMuaHang, IDVatPham, SoLuong, GiaLucMua) 
-VALUES (LAST_INSERT_ID(), 6, 1, 25000000.00);
+VALUES (@order_new_id, @vat_new_id, 1, 25000000.00);
 
 -- Kiểm tra điểm tích lũy sau khi mua hàng
 SELECT DiemTichLuy 

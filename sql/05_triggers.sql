@@ -44,6 +44,25 @@ BEGIN
     END IF;
 END;
 
+-- Trigger: Kiểm tra tuổi khi thêm/cập nhật Nhân Viên (>=18 tuổi)
+CREATE TRIGGER tr_check_nhanvien_age_before_insert
+BEFORE INSERT ON NhanVien
+FOR EACH ROW
+BEGIN
+    IF TIMESTAMPDIFF(YEAR, NEW.NgaySinh, CURDATE()) < 18 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Nhân viên phải đủ 18 tuổi trở lên.';
+    END IF;
+END;
+
+CREATE TRIGGER tr_check_nhanvien_age_before_update
+BEFORE UPDATE ON NhanVien
+FOR EACH ROW
+BEGIN
+    IF TIMESTAMPDIFF(YEAR, NEW.NgaySinh, CURDATE()) < 18 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Nhân viên phải đủ 18 tuổi trở lên.';
+    END IF;
+END;
+
 -- Trigger: Kiểm tra trùng lặp đợt giảm giá
 CREATE TRIGGER tg_CheckDiscountOverlap
 BEFORE INSERT ON DotGiamGia

@@ -22,6 +22,12 @@ def run_sql_file(path):
             stmt = stmt.strip()
             if stmt:
                 cur.execute(stmt)
+                # consume results for SELECTs to avoid 'Unread result found'
+                try:
+                    if getattr(cur, 'with_rows', False):
+                        cur.fetchall()
+                except Exception:
+                    pass
 
         conn.commit()
         print(f"✓ Executed {path}")
@@ -56,6 +62,11 @@ def run_routine_file(path):
         for stmt in statements:
             if stmt.strip() and not stmt.strip().startswith("--"):
                 cur.execute(stmt)
+                try:
+                    if getattr(cur, 'with_rows', False):
+                        cur.fetchall()
+                except Exception:
+                    pass
         
         conn.commit()
         print(f"✓ Executed routine {path}")

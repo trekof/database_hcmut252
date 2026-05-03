@@ -4,74 +4,62 @@ Supports 3 roles: Admin, NhanVienDungQuay (Cashier/Staff), KhachHang (Customer)
 Uses JWT tokens for session management
 """
 
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, g
 from flask_cors import CORS
+import mysql.connector
+from dotenv import load_dotenv
 import os
-
-from db import get_mysql_conn as get_db_connection
 from datetime import datetime, timedelta, date
 import re
 import jwt
 import json
 from functools import wraps
+import time
+import traceback
 
-import mysql.connector
-from mysql.connector import Error
-
-
-def _call_proc(conn, name, args):
-    """Gọi stored procedure; trả về tất cả hàng từ các result set (SELECT)."""
-    cur = conn.cursor(dictionary=True)
-    try:
-        cur.callproc(name, args)
-        rows = []
-        for res in cur.stored_results():
-            rows.extend(res.fetchall())
-        conn.commit()
-        return rows
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        cur.close()
-
-
-def _proc_http_error(e):
-    if isinstance(e, Error):
-        return jsonify({"error": e.msg}), 400
-    return jsonify({"error": str(e)}), 500
-
-
-def _arg_optional_int(qs, key):
-    v = qs.get(key)
-    if v is None or str(v).strip() == "":
-        return None
-    try:
-        return int(v)
-    except (TypeError, ValueError):
-        return None
-
-
-def _arg_optional_float(qs, key):
-    v = qs.get(key)
-    if v is None or str(v).strip() == "":
-        return None
-    try:
-        return float(v)
-    except (TypeError, ValueError):
-        return None
-
-
-def _arg_optional_str(qs, key):
-    v = qs.get(key)
-    if v is None:
-        return None
-    s = str(v).strip()
-    return None if s == "" else s
+# Load environment variables
+load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'your-secret-key-change-in-production')
 CORS(app)
+
+
+# Simple timing middleware to log slow requests
+@app.before_request
+def start_timer():
+    g._start_time = time.time()
+
+
+@app.after_request
+def log_request(response):
+    try:
+        elapsed = time.time() - getattr(g, '_start_time', time.time())
+        path = request.path
+        method = request.method
+        if elapsed > 0.5:
+            print(f"SLOW REQUEST: [{method}] {path} took {elapsed:.3f}s")
+        else:
+            print(f"REQUEST: [{method}] {path} took {elapsed:.3f}s")
+    except Exception:
+        pass
+    return response
+
+# MySQL Configuration
+MYSQL_CONFIG = {
+    "host": os.getenv("MYSQL_HOST"),
+    "port": int(os.getenv("MYSQL_PORT", 3306)),
+    "database": os.getenv("MYSQL_DB"),
+    "user": os.getenv("MYSQL_USER"),
+    "password": os.getenv("MYSQL_PASSWORD"),
+    "autocommit": False,
+    # fail fast on DB connect attempts when DB is unreachable
+    "connection_timeout": int(os.getenv("MYSQL_CONN_TIMEOUT", 5))
+}
+
+def get_db_connection():
+    """Get MySQL connection"""
+    return mysql.connector.connect(**MYSQL_CONFIG)
 
 # ==================== AUTH HELPERS ====================
 
@@ -248,6 +236,13 @@ def register():
         
         return jsonify({"message": "User registered successfully"}), 201
     except Exception as e:
+        # Map DB SIGNAL errors (SQLSTATE '45000') to client-friendly 400 messages
+        try:
+            import mysql.connector as _mysql
+            if isinstance(e, _mysql.Error) and getattr(e, 'sqlstate', None) == '45000':
+                return jsonify({"error": str(e)}), 400
+        except Exception:
+            pass
         return jsonify({"error": str(e)}), 500
 
 
@@ -263,6 +258,13 @@ def get_employee_dependents(id):
         conn.close()
         return jsonify(deps), 200
     except Exception as e:
+        # Map DB SIGNAL errors (SQLSTATE '45000') to client-friendly 400 messages
+        try:
+            import mysql.connector as _mysql
+            if isinstance(e, _mysql.Error) and getattr(e, 'sqlstate', None) == '45000':
+                return jsonify({"error": str(e)}), 400
+        except Exception:
+            pass
         return jsonify({"error": str(e)}), 500
 
 
@@ -372,6 +374,7 @@ def verify_auth():
 def get_employees():
     """Get all employees (Admin & Staff only)"""
     try:
+        print('[ENTRY] /api/employees')
         conn = get_db_connection()
         cur = conn.cursor(dictionary=True)
         cur.execute("SELECT * FROM NhanVien ORDER BY IDNhanVien")
@@ -379,6 +382,26 @@ def get_employees():
         cur.close()
         conn.close()
         return jsonify(employees), 200
+    except Exception as e:
+        print('ERROR /api/employees', e)
+        print(traceback.format_exc())
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/employees/<id>', methods=['GET'])
+@require_role('Admin', 'NhanVienDungQuay')
+def get_employee(id):
+    """Get single employee by ID"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT * FROM NhanVien WHERE IDNhanVien=%s", (id,))
+        emp = cur.fetchone()
+        cur.close()
+        conn.close()
+        if not emp:
+            return jsonify({"error": "Employee not found"}), 404
+        return jsonify(emp), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -400,6 +423,24 @@ def create_employee():
         gioi_tinh = data.get('GioiTinh')
         ngay_sinh = data.get('NgaySinh')
 
+        # NgaySinh is compulsory at API level
+        if not ngay_sinh:
+            return jsonify({"error": "NgaySinh (birthdate) is required in YYYY-MM-DD format"}), 400
+        # validate format
+        try:
+            if isinstance(ngay_sinh, str):
+                ngay_sinh_date = date.fromisoformat(ngay_sinh)
+            else:
+                ngay_sinh_date = date.fromisoformat(str(ngay_sinh))
+        except Exception:
+            return jsonify({"error": "NgaySinh must be a valid date in YYYY-MM-DD format"}), 400
+
+        # Server-side age check (ensure >= 18)
+        today = date.today()
+        age = today.year - ngay_sinh_date.year - ((today.month, today.day) < (ngay_sinh_date.month, ngay_sinh_date.day))
+        if age < 18:
+            return jsonify({"error": "Nhân viên phải đủ 18 tuổi trở lên."}), 400
+
         if id_quan_ly:
             cur.execute("SELECT CongViec FROM NhanVien WHERE IDNhanVien=%s", (id_quan_ly,))
             mgr = cur.fetchone()
@@ -417,7 +458,7 @@ def create_employee():
             data['CMND_CCCD'],
             data.get('Ho'),
             data.get('Ten'),
-            ngay_sinh,
+            ngay_sinh_date,
             data.get('SDT'),
             data.get('CongViec'),
             gioi_tinh,
@@ -433,6 +474,70 @@ def create_employee():
             "message": "Employee created successfully",
             "IDNhanVien": emp_id
         }), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/employees/<id>', methods=['PUT'])
+@require_role('Admin')
+def update_employee(id):
+    """Update employee (Admin only)"""
+    try:
+        data = request.json
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        # Validate NgaySinh is provided and valid
+        ngay_sinh = data.get('NgaySinh')
+        if not ngay_sinh:
+            return jsonify({"error": "NgaySinh (birthdate) is required in YYYY-MM-DD format"}), 400
+        try:
+            if isinstance(ngay_sinh, str):
+                ngay_sinh_date = date.fromisoformat(ngay_sinh)
+            else:
+                ngay_sinh_date = date.fromisoformat(str(ngay_sinh))
+        except Exception:
+            return jsonify({"error": "NgaySinh must be a valid date in YYYY-MM-DD format"}), 400
+
+        # Server-side age check (ensure >= 18) for updates as well
+        today = date.today()
+        age = today.year - ngay_sinh_date.year - ((today.month, today.day) < (ngay_sinh_date.month, ngay_sinh_date.day))
+        if age < 18:
+            return jsonify({"error": "Nhân viên phải đủ 18 tuổi trở lên."}), 400
+
+        # If an IDQuanLy (manager) is provided, fetch their CongViec to set BoPhanQuanLy
+        bo_phan = data.get('BoPhanQuanLy')
+        id_quan_ly = data.get('IDQuanLy')
+        if id_quan_ly:
+            cur.execute("SELECT CongViec FROM NhanVien WHERE IDNhanVien=%s", (id_quan_ly,))
+            mgr = cur.fetchone()
+            if mgr:
+                bo_phan = mgr[0]
+
+        # Build update statement dynamically
+        fields = []
+        params = []
+        allowed = ['CMND_CCCD','Ho','Ten','NgaySinh','SDT','CongViec','GioiTinh','BoPhanQuanLy','IDQuanLy']
+        for k in allowed:
+            if k in data:
+                fields.append(f"{k}=%s")
+                if k == 'NgaySinh':
+                    params.append(ngay_sinh_date)
+                elif k == 'BoPhanQuanLy':
+                    params.append(bo_phan)
+                else:
+                    params.append(data.get(k))
+
+        if not fields:
+            return jsonify({"error": "No updatable fields provided"}), 400
+
+        params.append(id)
+        query = f"UPDATE NhanVien SET {', '.join(fields)} WHERE IDNhanVien=%s"
+        cur.execute(query, tuple(params))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({"message": "Employee updated"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -453,31 +558,6 @@ def delete_employee(id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/employees/<emp_id>', methods=['PUT'])
-@require_role('Admin')
-def update_employee(emp_id):
-    try:
-        data = request.json
-        conn = get_db_connection()
-        cur = conn.cursor()
-        fields = []
-        params = []
-        for key in ['CMND_CCCD', 'Ho', 'Ten', 'NgaySinh', 'SDT', 'CongViec', 'GioiTinh', 'BoPhanQuanLy', 'IDQuanLy']:
-            if key in data:
-                fields.append(f"{key}=%s")
-                params.append(data[key])
-        if not fields:
-            return jsonify({"error": "No fields to update"}), 400
-        params.append(emp_id)
-        query = f"UPDATE NhanVien SET {', '.join(fields)} WHERE IDNhanVien=%s"
-        cur.execute(query, tuple(params))
-        conn.commit() # QUAN TRỌNG: Phải có dòng này thì DB mới thay đổi
-        cur.close()
-        conn.close()
-        return jsonify({"message": "Updated successfully"}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
 # ==================== CUSTOMERS ====================
 
 @app.route('/api/customers', methods=['GET'])
@@ -485,6 +565,7 @@ def update_employee(emp_id):
 def get_customers():
     """Get all customers (Admin & Staff)"""
     try:
+        print('[ENTRY] /api/customers')
         conn = get_db_connection()
         cur = conn.cursor(dictionary=True)
         cur.execute("SELECT k.*, c.CCCD_CMND, c.Ho, c.Ten, d.DiaChi, t.MaSoThue, t.TenCongTy FROM KhachHang k LEFT JOIN CaNhan c ON k.IDKhachHang=c.IDKhachHang LEFT JOIN DiaChiCaNhan d ON c.CCCD_CMND=d.CCCD_CMND LEFT JOIN TapTheCongTy t ON k.IDKhachHang=t.IDKhachHang ORDER BY k.IDKhachHang")
@@ -517,6 +598,8 @@ def get_customers():
         conn.close()
         return jsonify(customers), 200
     except Exception as e:
+        print('ERROR /api/customers', e)
+        print(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/customers/me', methods=['GET'])
@@ -858,6 +941,7 @@ def delete_customer(id):
 def get_products():
     """Get all products (all authenticated users)"""
     try:
+        print('[ENTRY] /api/products')
         conn = get_db_connection()
         cur = conn.cursor(dictionary=True)
         cur.execute("SELECT * FROM VatPham ORDER BY IDVatPham")
@@ -866,6 +950,8 @@ def get_products():
         conn.close()
         return jsonify(products), 200
     except Exception as e:
+        print('ERROR /api/products', e)
+        print(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/products/<int:id>', methods=['GET'])
@@ -889,134 +975,82 @@ def get_product(id):
 @app.route('/api/products', methods=['POST'])
 @require_role('Admin')
 def create_product():
-    """Create new product (Admin only) — gọi sp_btl21_vat_pham_insert"""
+    """Create new product (Admin only)"""
     try:
         data = request.json
         conn = get_db_connection()
-        try:
-            rows = _call_proc(
-                conn,
-                "sp_btl21_vat_pham_insert",
-                [
-                    data.get("TenVatPham"),
-                    int(data.get("SoLuongKhaDung", 0)),
-                    float(data.get("GiaNiemYet", 0)),
-                ],
-            )
-        except Error as e:
-            return _proc_http_error(e)
-        finally:
-            conn.close()
-
-        new_id = None
-        if rows and rows[0].get("IDVatPham") is not None:
-            new_id = int(rows[0]["IDVatPham"])
+        cur = conn.cursor()
+        
+        query = """
+            INSERT INTO VatPham 
+            (TenVatPham, SoLuongKhaDung, GiaNiemYet)
+            VALUES (%s, %s, %s)
+        """
+        
+        cur.execute(query, (
+            data['TenVatPham'],
+            data.get('SoLuongKhaDung', 0),
+            data.get('GiaNiemYet', 0)
+        ))
+        
+        product_id = cur.lastrowid
+        conn.commit()
+        cur.close()
+        conn.close()
+        
         return jsonify({
             "message": "Product created successfully",
-            "IDVatPham": new_id,
+            "IDVatPham": product_id
         }), 201
     except Exception as e:
-        return _proc_http_error(e)
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/products/<int:id>', methods=['PUT'])
 @require_role('Admin')
 def update_product(id):
-    """Update product (Admin only) — gọi sp_btl21_vat_pham_update"""
+    """Update product (Admin only)"""
     try:
         data = request.json
         conn = get_db_connection()
-        try:
-            _call_proc(
-                conn,
-                "sp_btl21_vat_pham_update",
-                [
-                    id,
-                    data.get("TenVatPham"),
-                    int(data.get("SoLuongKhaDung", 0)),
-                    float(data.get("GiaNiemYet", 0)),
-                ],
-            )
-        except Error as e:
-            return _proc_http_error(e)
-        finally:
-            conn.close()
-
+        cur = conn.cursor()
+        
+        query = """
+            UPDATE VatPham 
+            SET TenVatPham=%s, SoLuongKhaDung=%s, GiaNiemYet=%s
+            WHERE IDVatPham=%s
+        """
+        
+        cur.execute(query, (
+            data.get('TenVatPham'),
+            data.get('SoLuongKhaDung'),
+            data.get('GiaNiemYet'),
+            id
+        ))
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
         return jsonify({"message": "Product updated successfully"}), 200
     except Exception as e:
-        return _proc_http_error(e)
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/products/<int:id>', methods=['DELETE'])
 @require_role('Admin')
 def delete_product(id):
-    """Delete product (Admin only) — gọi sp_btl21_vat_pham_delete"""
+    """Delete product (Admin only)"""
     try:
         conn = get_db_connection()
-        try:
-            _call_proc(conn, "sp_btl21_vat_pham_delete", [id])
-        except Error as e:
-            return _proc_http_error(e)
-        finally:
-            conn.close()
-
+        cur = conn.cursor()
+        
+        cur.execute("DELETE FROM VatPham WHERE IDVatPham=%s", (id,))
+        conn.commit()
+        cur.close()
+        conn.close()
+        
         return jsonify({"message": "Product deleted successfully"}), 200
     except Exception as e:
-        return _proc_http_error(e)
-
-
-@app.route("/api/products/search-books", methods=["GET"])
-@require_auth
-def products_search_books():
-    """BTL 2.3 — tìm sách (VatPham JOIN Sach), tham số lọc từ query string."""
-    try:
-        q = request.args
-        conn = get_db_connection()
-        try:
-            rows = _call_proc(
-                conn,
-                "sp_btl23_tim_sach",
-                [
-                    _arg_optional_str(q, "tu_khoa"),
-                    _arg_optional_int(q, "nam_xb_min"),
-                    _arg_optional_int(q, "nam_xb_max"),
-                    _arg_optional_float(q, "gia_min"),
-                    _arg_optional_float(q, "gia_max"),
-                ],
-            )
-        finally:
-            conn.close()
-        rows = convert_decimal_and_dates(rows)
-        return jsonify(rows), 200
-    except Error as e:
-        return _proc_http_error(e)
-    except Exception as e:
-        return _proc_http_error(e)
-
-
-@app.route("/api/products/stats-sales", methods=["GET"])
-@require_auth
-def products_stats_sales():
-    """BTL 2.3 — thống kê bán theo vật phẩm (GROUP BY, HAVING)."""
-    try:
-        q = request.args
-        tu_ngay = _arg_optional_str(q, "tu_ngay")
-        den_ngay = _arg_optional_str(q, "den_ngay")
-        doanh_tt = _arg_optional_float(q, "doanh_toi_thieu")
-
-        conn = get_db_connection()
-        try:
-            rows = _call_proc(
-                conn,
-                "sp_btl23_thong_ke_ban_vat_pham",
-                [tu_ngay, den_ngay, doanh_tt],
-            )
-        finally:
-            conn.close()
-        rows = convert_decimal_and_dates(rows)
-        return jsonify(rows), 200
-    except Error as e:
-        return _proc_http_error(e)
-    except Exception as e:
-        return _proc_http_error(e)
+        return jsonify({"error": str(e)}), 500
 
 # ==================== BORROWING (RENTAL for customers/staff) ====================
 
@@ -1025,6 +1059,7 @@ def products_stats_sales():
 def get_borrowing():
     """Get borrowing records (filtered by role)"""
     try:
+        print('[ENTRY] /api/borrowing')
         conn = get_db_connection()
         cur = conn.cursor(dictionary=True)
         
@@ -1064,6 +1099,8 @@ def get_borrowing():
         conn.close()
         return jsonify(borrowings), 200
     except Exception as e:
+        print('ERROR /api/borrowing', e)
+        print(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/rentals', methods=['GET'])
@@ -1109,6 +1146,7 @@ def get_rentals():
 def get_stats():
     """Get statistics (role-based)"""
     try:
+        print('[ENTRY] /api/stats')
         conn = get_db_connection()
         cur = conn.cursor(dictionary=True)
         
@@ -1155,6 +1193,8 @@ def get_stats():
         conn.close()
         return jsonify(stats), 200
     except Exception as e:
+        print('ERROR /api/stats', e)
+        print(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
 # ==================== ERROR HANDLERS ====================

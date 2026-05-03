@@ -80,6 +80,12 @@ MYSQL_USER=root
 MYSQL_PASSWORD=your_password
 ```
 
+có thể dùng các lệnh sau để khởi chạy và tắt mysql thủ công (trên Administator Powershell):
+
+net start MySQL80
+
+net stop MySQL80
+
 ---
 
 ## Database setup
