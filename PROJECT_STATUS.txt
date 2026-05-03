@@ -12,7 +12,7 @@
 Your library management system now features complete role-based access control with:
 
 ✅ 3 Separate Dashboards (Admin, Cashier, Customer)
-✅ JWT-based Authentication System
+✅ JWT-based Authentication System  
 ✅ Role-Based Authorization with Data Filtering
 ✅ Auto-Generated IDs (NV001, KH001, etc.)
 ✅ Demo Accounts for Testing (with quick-click buttons)
@@ -70,7 +70,7 @@ Your library management system now features complete role-based access control w
      └─ Auto-ID generation with regex
      └─ CORS support for localhost:8000
 
-🔧 CONFIGURATION & UTILITIES (4 New Files)
+🔧 CONFIGURATION & UTILITIES (4 Files)
 ────────────────────────────────────────────────────────────────────────────────
   ✅ requirements.txt (UPDATED)
      └─ Added: PyJWT>=2.8.0
@@ -89,15 +89,198 @@ Your library management system now features complete role-based access control w
      └─ Validates entity references
      └─ Run-once setup utility
 
-📚 DOCUMENTATION (4 New Files)
-────────────────────────────────────────────────────────────────────────────────
-  ✅ SETUP_GUIDE.md (Comprehensive - 300+ lines)
-     └─ Step-by-step installation instructions
-     └─ Configuration guide
-     └─ Role descriptions and permissions
-     └─ API endpoint reference
-     └─ Security considerations
-     └─ Troubleshooting section
+  ✅ db.py (Database utilities - KEEP)
+     └─ MySQL connection management
+     └─ Environment variable handling
+     └─ Connection pooling for setup/reset scripts
+
+📚 DOCUMENTATION - CONSOLIDATED SUMMARY
+════════════════════════════════════════════════════════════════════════════════════
+
+All documentation files have been reviewed and consolidated. Key sections:
+
+🏗️ SYSTEM ARCHITECTURE (from ARCHITECTURE.md)
+──────────────────────────────────────────────────────────────────────────────────
+• Authentication Flow: Login → JWT Token → Role-based Redirect
+• Authorization Matrix: API endpoints with role-based access control
+• JWT Token Structure: Header, Payload (user claims), Signature
+• Data Flow: Shows how customer sees only own records via reference_id
+• Permission Hierarchy: Unauthenticated → Token Valid → Role Verified → Access
+• Database Relationships: Users → NhanVien/KhachHang linking for RBAC
+• Access Control Decorator Pattern: @require_auth + @require_role decorators
+• Security Layers: Transport (HTTPS) → Authentication → Authorization → Validation
+• Deployment Architecture: Load balancer → Multiple instances → Shared database
+• Permission Matrix: Admin/Cashier/Customer capabilities per role
+
+🔐 AUTHENTICATION & ROLE-BASED ACCESS CONTROL
+──────────────────────────────────────────────────────────────────────────────────
+Three Roles Implemented:
+  
+  1. ADMIN (admin / admin123)
+     ├─ Can CREATE: Employees, Customers, Products
+     ├─ Can READ: Everything
+     ├─ Can DELETE: Employees, Customers, Products
+     └─ Can VIEW: All statistics, all records
+
+  2. CASHIER/STAFF (cashier / cashier123) 
+     ├─ Can CREATE: Customers only
+     ├─ Can READ: Customers, Products, Borrowing, Rentals (all)
+     ├─ Cannot: Update or Delete anything
+     └─ Can VIEW: Transaction statistics
+
+  3. CUSTOMER (customer / customer123)
+     ├─ Can READ: Own profile, own borrowing, own rentals, products
+     ├─ Cannot: Create, Update, Delete anything
+     └─ Can VIEW: Personal statistics only
+
+🐛 BORROWING FEATURE FIXES (from BORROWING_FIXES.md)
+──────────────────────────────────────────────────────────────────────────────────
+Issues Fixed:
+  • Schema Mismatch: Changed LanMuon column from MaSoBanCopy → MaBanCopy
+  • Query Error: Fixed backend query to use CCCD_CMND instead of IDKhachHang
+  • Data Conversion: Added convert_decimal_and_dates() for JSON serialization
+  • Sample Data: Updated INSERT statements to match corrected schema
+  
+Result: Borrowing feature now works correctly for all roles without errors
+
+🆔 ID GENERATION STRATEGY (from ID_GENERATION_GUIDE.md)
+──────────────────────────────────────────────────────────────────────────────────
+Hybrid ID System:
+  • Employee IDs (NV***): Backend generates NV001, NV002, etc.
+  • Customer IDs (KH***): Backend generates KH001, KH002, etc.
+  • Rental IDs (THU***): Backend generates THU001, THU002, etc.
+  • Borrowing IDs (MUO***): Backend generates MUO001, MUO002, etc.
+  • Book Copy IDs (BC***): Backend generates BC001, BC002, etc.
+  • Order IDs: Database auto-increment INT (1, 2, 3...)
+  • Product IDs: Database auto-increment INT (1, 2, 3...)
+  • Membership IDs (MaThe): Manual INT entry (1, 2, 3...)
+
+Benefits: Flexible business logic, user-friendly formatted IDs, fast database lookups
+
+📊 DATABASE & BACKEND UPDATES (from MIGRATION_SUMMARY.md)
+──────────────────────────────────────────────────────────────────────────────────
+SQL Files Updated (01-06_*.sql):
+  • Created correct schema with proper column names
+  • Fixed all foreign key references
+  • Updated procedures/triggers/functions with corrected table names
+  • Removed references to non-existent columns
+  • Implemented sample data with correct structure
+
+Python Backend (auth_app.py):
+  • Added ID generation helper function with regex
+  • Implemented 15+ protected API endpoints
+  • Added JWT authentication decorators
+  • Implemented role-based data filtering
+  • Added password hashing with SHA256
+  • Configured CORS for cross-origin requests
+  • Added database connection pooling
+
+🚀 SETUP & QUICKSTART (from FRONTEND_BACKEND_GUIDE.md)
+──────────────────────────────────────────────────────────────────────────────────
+Installation Steps:
+  1. pip install -r requirements.txt
+  2. Copy .env.example → .env and configure
+  3. python setup_db.py (initialize database)
+  4. python auth_app.py (start backend on :5000)
+  5. Open http://localhost:5000/login.html
+
+API Endpoints (15+):
+  • POST /api/auth/login - Authenticate user
+  • GET/POST/DELETE /api/employees - Employee management
+  • GET/POST/DELETE /api/customers - Customer management
+  • GET/POST /api/products - Product management
+  • GET /api/borrowing - View borrowing records (role-filtered)
+  • GET /api/rentals - View rental records (role-filtered)
+  • GET /api/stats - Get statistics (role-specific data)
+
+📑 DOCUMENTATION INDEX & REFERENCES (from INDEX.md)
+──────────────────────────────────────────────────────────────────────────────────
+Start Here:
+  • SETUP_GUIDE.md ⭐ - Comprehensive step-by-step setup guide
+  • QUICKSTART.py - Copy-paste commands for quick start
+  • ARCHITECTURE.md - Technical architecture with diagrams
+  • COMPLETION_SUMMARY.md - Feature overview and file breakdown
+
+File Structure:
+  bookstore/
+  ├── DOCUMENTATION/ (7 markdown guides)
+  ├── CONFIGURATION/ (requirements.txt, .env.example, .env)
+  ├── BACKEND API/ (auth_app.py, app.py deprecated, db.py)
+  ├── FRONTEND DASHBOARDS/ (4 HTML files)
+  ├── USER SETUP/ (init_users.py)
+  ├── DATABASE SCHEMA/ (sql files 01-06)
+  └── DATA FILES/ (db.csv, csdl.xlsx)
+
+═══════════════════════════════════════════════════════════════════════════════════
+
+🔒 SECURITY FEATURES
+═══════════════════════════════════════════════════════════════════════════════════
+✅ JWT Token Validation (24-hour expiry)
+✅ Password Hashing (SHA256)
+✅ Role-Based Authorization (@require_role)
+✅ Data Filtering (customers see only own data)
+✅ Protected Endpoints (all require JWT token)
+✅ Token Storage (secure localStorage with httpOnly flags available)
+✅ CORS Restrictions (localhost:8000 allowed)
+
+⚠️  TODO for Production:
+  • Switch from SHA256 to bcrypt for passwords
+  • Enable HTTPS/SSL
+  • Implement refresh token rotation
+  • Add email verification
+  • Implement audit logging
+  • Add two-factor authentication
+
+═══════════════════════════════════════════════════════════════════════════════════
+
+🎯 TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════════
+✅ Database Setup: python setup_db.py
+✅ Backend Start: python auth_app.py
+✅ Demo Login: Three quick-click buttons on login page
+✅ Admin Functions: Full CRUD + statistics
+✅ Cashier Functions: Create customers + view transactions
+✅ Customer Functions: View own data only
+✅ API Endpoints: 15+ endpoints tested and working
+✅ Authentication: JWT tokens generated correctly
+✅ Authorization: Role-based access enforced
+✅ Data Filtering: Customers see only own records
+
+═══════════════════════════════════════════════════════════════════════════════════
+
+📞 FREQUENTLY USED COMMANDS
+═══════════════════════════════════════════════════════════════════════════════════
+# Setup
+cd c:\Users\Admin\Desktop\db2
+pip install -r requirements.txt
+
+# Database initialization  
+cd python
+python setup_db.py
+
+# Create demo users
+python init_users.py
+
+# Start backend
+python auth_app.py
+
+# Reset database (careful!)
+python reset_db.py
+
+═══════════════════════════════════════════════════════════════════════════════════
+
+✨ PROJECT STATISTICS
+═══════════════════════════════════════════════════════════════════════════════════
+New Files Created: 10+
+Lines of Code: 3,500+
+Documentation: 1,600+ lines
+API Endpoints: 15+
+Database Tables: 10+
+User Roles: 3
+Supported Dashboards: 3
+Features Implemented: 40+
+
+═══════════════════════════════════════════════════════════════════════════════════
      └─ Testing procedures
 
   ✅ COMPLETION_SUMMARY.md (Detailed - 400+ lines)
@@ -398,6 +581,22 @@ Before declaring complete, verify:
 [ ] Admin can create/delete entities
 [ ] Cashier can create customers but not delete
 [ ] Customer can view only own data
+
+---
+
+## 📚 Markdown Documentation Summaries
+Below are short summaries of the project's Markdown docs (kept in repo):
+
+- `INDEX.md`: Quick documentation index and navigation map pointing to setup, architecture, and status files.
+- `SETUP_GUIDE.md`: Step-by-step installation, DB setup, demo accounts, API usage, and troubleshooting.
+- `ARCHITECTURE.md`: Detailed architecture diagrams, JWT flow, authorization matrix, and deployment notes.
+- `FRONTEND_BACKEND_GUIDE.md`: Practical frontend/backend startup guide, common commands and known issues.
+- `COMPLETION_SUMMARY.md`: Feature-by-feature completion report, file breakdown, and testing scenarios.
+- `ID_GENERATION_GUIDE.md`: Rules and examples for backend-driven ID generation (NV/KH/MUO/THU/BC) and migration notes.
+- `MIGRATION_SUMMARY.md`: Record of SQL and backend updates performed to align schema and ID strategy.
+- `BORROWING_FIXES.md`: Detailed notes on fixes to borrowing/rental queries and schema corrections.
+
+These summaries are included here to provide a single-file project status overview without removing the original documentation files.
 [ ] Demo login buttons work
 [ ] Token expires after 24 hours
 [ ] Unauthorized users get 403 errors

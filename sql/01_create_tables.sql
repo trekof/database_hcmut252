@@ -228,6 +228,7 @@ CREATE TABLE IF NOT EXISTS LanMuon (
     TinhTrangSauKhiTra VARCHAR(50),
     NgayMuon DATE,
     HanTra DATE,
+    NgayTra DATE,
     PRIMARY KEY (IDVatPham, MaSoBanCopy, CCCD_CMND, MaThe, MaDonMuon),
     FOREIGN KEY (IDVatPham, MaSoBanCopy) REFERENCES BanCopy(IDVatPham, MaSoBanCopy) ON DELETE CASCADE,
     FOREIGN KEY (CCCD_CMND, MaThe) REFERENCES TheThanhVien(CCCD_CMND, MaThe) ON DELETE CASCADE,

@@ -60,7 +60,7 @@ def run_routine_file(path):
         
         # Execute each statement
         for stmt in statements:
-            if stmt.strip() and not stmt.strip().startswith("--"):
+            if stmt.strip():
                 cur.execute(stmt)
                 try:
                     if getattr(cur, 'with_rows', False):
