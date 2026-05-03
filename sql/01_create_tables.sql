@@ -104,7 +104,8 @@ CREATE TABLE IF NOT EXISTS TheThanhVien (
     NgayLapThe DATE,
     NgayHetHan DATE,
     PRIMARY KEY (CCCD_CMND, MaThe),
-    FOREIGN KEY (CCCD_CMND) REFERENCES CaNhan(CCCD_CMND) ON DELETE CASCADE
+    FOREIGN KEY (CCCD_CMND) REFERENCES CaNhan(CCCD_CMND) ON DELETE CASCADE,
+    CONSTRAINT chk_han_su_dung CHECK (NgayHetHan > NgayLapThe)
 );
 
 -- =====================================================
@@ -116,7 +117,8 @@ CREATE TABLE IF NOT EXISTS VatPham (
     IDVatPham INT AUTO_INCREMENT PRIMARY KEY, -- Riêng Vật phẩm vẫn nên dùng AUTO_INCREMENT cho hiệu năng
     TenVatPham VARCHAR(100),
     SoLuongKhaDung INT DEFAULT 0,
-    GiaNiemYet DECIMAL(10, 2)
+    GiaNiemYet DECIMAL(10, 2),
+    CONSTRAINT chk_so_luong_kha_dung CHECK (SoLuongKhaDung >= 0)
 );
 
 -- 12. Sách
@@ -162,7 +164,9 @@ CREATE TABLE IF NOT EXISTS DotGiamGia (
     NgayKetThuc DATE,
     PhanTramGiamGia INT,
     FOREIGN KEY (IDVatPham) REFERENCES VatPham(IDVatPham) ON DELETE CASCADE,
-    UNIQUE (IDVatPham, NgayBatDau) 
+    CONSTRAINT chk_phan_tram CHECK (PhanTramGiamGia BETWEEN 0 AND 100),
+    CONSTRAINT chk_ngay_giam_gia CHECK (NgayKetThuc > NgayBatDau),
+    UNIQUE (IDVatPham, NgayBatDau)
 );
 
 -- =====================================================
@@ -186,7 +190,8 @@ CREATE TABLE IF NOT EXISTS DonHangChiTiet (
     GiaLucMua DECIMAL(10, 2),
     PRIMARY KEY (IDDonMuaHang, IDVatPham),
     FOREIGN KEY (IDDonMuaHang) REFERENCES DonMuaHang(IDDonMuaHang) ON DELETE CASCADE,
-    FOREIGN KEY (IDVatPham) REFERENCES VatPham(IDVatPham) ON DELETE RESTRICT
+    FOREIGN KEY (IDVatPham) REFERENCES VatPham(IDVatPham) ON DELETE RESTRICT,
+    CONSTRAINT chk_so_luong_don CHECK (SoLuong > 0)
 );
 
 -- 19. Giao Tận Nhà
@@ -225,7 +230,8 @@ CREATE TABLE IF NOT EXISTS LanMuon (
     HanTra DATE,
     PRIMARY KEY (IDVatPham, MaSoBanCopy, CCCD_CMND, MaThe, MaDonMuon),
     FOREIGN KEY (IDVatPham, MaSoBanCopy) REFERENCES BanCopy(IDVatPham, MaSoBanCopy) ON DELETE CASCADE,
-    FOREIGN KEY (CCCD_CMND, MaThe) REFERENCES TheThanhVien(CCCD_CMND, MaThe) ON DELETE CASCADE
+    FOREIGN KEY (CCCD_CMND, MaThe) REFERENCES TheThanhVien(CCCD_CMND, MaThe) ON DELETE CASCADE,
+    CONSTRAINT chk_han_tra CHECK (HanTra > NgayMuon)
 );
 
 -- 22. Lần Thuê

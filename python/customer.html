@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Customer Portal - Library Management</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         * {
             margin: 0;
@@ -341,77 +342,77 @@
 <body>
     <div class="container">
         <header>
-            <h1>📚 My Library Account</h1>
+            <h1><i class="fas fa-user"></i> My Library Account</h1>
             <div class="user-info">
                 <span id="userDisplay"></span>
-                <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+                <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
             </div>
         </header>
 
         <!-- Statistics -->
         <div class="stats">
             <div class="stat-card">
-                <h3>🏷️ Member Card</h3>
+                <h3><i class="fas fa-id-card"></i> Member Card</h3>
                 <div class="number" id="stat-card">-</div>
             </div>
             <div class="stat-card">
-                <h3>📖 Active Borrowing</h3>
+                <h3><i class="fas fa-book"></i> Active Borrowing</h3>
                 <div class="number" id="stat-borrowing">-</div>
             </div>
             <div class="stat-card">
-                <h3>💳 Active Rentals</h3>
+                <h3><i class="fas fa-credit-card"></i> Active Rentals</h3>
                 <div class="number" id="stat-rentals">-</div>
             </div>
             <div class="stat-card">
-                <h3>⭐ Loyalty Points</h3>
+                <h3><i class="fas fa-star"></i> Loyalty Points</h3>
                 <div class="number" id="stat-points">-</div>
             </div>
         </div>
 
         <!-- Tabs Navigation -->
         <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('profile', event)">👤 My Profile</button>
-            <button class="tab-btn" onclick="switchTab('borrowing', event)">📖 My Borrowing</button>
-            <button class="tab-btn" onclick="switchTab('rentals', event)">💳 My Rentals</button>
-            <button class="tab-btn" onclick="switchTab('catalog', event)">📚 Browse Products</button>
+            <button class="tab-btn active" onclick="switchTab('profile', event)"><i class="fas fa-user"></i> My Profile</button>
+            <button class="tab-btn" onclick="switchTab('borrowing', event)"><i class="fas fa-book"></i> My Borrowing</button>
+            <button class="tab-btn" onclick="switchTab('rentals', event)"><i class="fas fa-credit-card"></i> My Rentals</button>
+            <button class="tab-btn" onclick="switchTab('catalog', event)"><i class="fas fa-bookmark"></i> Browse Products</button>
         </div>
 
         <!-- PROFILE TAB -->
         <div id="profile" class="tab-content active">
             <div class="alert" id="profile-alert"></div>
             <div class="profile-card">
-                <h2 class="section-title">👤 Your Account Information</h2>
+                <h2 class="section-title"><i class="fas fa-user"></i> Your Account Information</h2>
                 <div class="restricted-notice">
-                    📖 This is your personal account information. You can view your profile, borrowing history, rentals, and browse available products.
+                    <i class="fas fa-info-circle"></i>  This is your personal account information. You can view your profile, borrowing history, rentals, and browse available products.
                 </div>
                 <div id="profile-loading" class="loading"><div class="spinner"></div></div>
                 <div id="profile-content" style="display: none;">
                     <div class="profile-field">
-                        <label>📋 Customer ID:</label>
+                        <label><i class="fas fa-id-card"></i> Customer ID:</label>
                         <value id="profile-id"></value>
                     </div>
                     <div class="profile-field">
-                        <label>👥 Type:</label>
+                        <label><i class="fas fa-users"></i> Type:</label>
                         <value id="profile-type"></value>
                     </div>
                     <div class="profile-field">
-                        <label>📞 Phone:</label>
+                        <label><i class="fas fa-phone"></i> Phone:</label>
                         <div><input id="profile-phone-input" type="text" disabled style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px"></div>
                     </div>
                     <div class="profile-field">
-                        <label>CCCD / CMND:</label>
+                        <label><i class="fas fa-id-card"></i> CCCD / CMND:</label>
                         <div><input id="profile-cccd" type="text" disabled style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px"></div>
                     </div>
                     <div class="profile-field">
-                        <label>Họ:</label>
+                        <label><i class="fas fa-user"></i> Họ:</label>
                         <div><input id="profile-ho" type="text" disabled style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px"></div>
                     </div>
                     <div class="profile-field">
-                        <label>Tên:</label>
+                        <label><i class="fas fa-user"></i> Tên:</label>
                         <div><input id="profile-ten" type="text" disabled style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px"></div>
                     </div>
                     <div class="profile-field">
-                        <label>Địa chỉ:</label>
+                        <label><i class="fas fa-home"></i> Địa chỉ:</label>
                         <div><input id="profile-diachi" type="text" disabled style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px"></div>
                     </div>
                     <div style="text-align:center;margin-top:10px">
@@ -421,15 +422,15 @@
                     </div>
                     <div style="height:12px"></div>
                     <div class="profile-field">
-                        <label>⭐ Loyalty Points:</label>
+                        <label><i class="fas fa-star"></i> Loyalty Points:</label>
                         <value id="profile-points"></value>
                     </div>
                     <div class="profile-field">
-                        <label>📚 Total Borrowed:</label>
+                        <label><i class="fas fa-book"></i> Total Borrowed:</label>
                         <value id="profile-borrowed"></value>
                     </div>
                     <div class="profile-field">
-                        <label>💳 Total Rented:</label>
+                        <label><i class="fas fa-credit-card"></i> Total Rented:</label>
                         <value id="profile-rented"></value>
                     </div>
                 </div>
@@ -439,16 +440,16 @@
         <!-- BORROWING TAB -->
         <div id="borrowing" class="tab-content">
             <div class="alert" id="borrowing-alert"></div>
-            <h2 class="section-title">📖 My Borrowing History</h2>
+            <h2 class="section-title"><i class="fas fa-book"></i> My Borrowing History</h2>
             <div class="restricted-notice">
-                📖 Showing only your borrowing records
+                <i class="fas fa-info-circle"></i> Showing only your borrowing records
             </div>
             <div class="search-box">
                 <input type="text" id="borrowing-search" placeholder="Search..." onkeyup="filterTable('borrowing')">
             </div>
             <div id="borrowing-loading" class="loading"><div class="spinner"></div></div>
             <div id="borrowing-empty" class="empty-state" style="display: none;">
-                <div class="empty-state-icon">📖</div>
+                <div class="empty-state-icon"><i class="fas fa-book"></i></div>
                 <p>You haven't borrowed any items yet</p>
             </div>
             <div class="table-wrapper">
@@ -470,16 +471,16 @@
         <!-- RENTALS TAB -->
         <div id="rentals" class="tab-content">
             <div class="alert" id="rentals-alert"></div>
-            <h2 class="section-title">💳 My Rental History</h2>
+            <h2 class="section-title"><i class="fas fa-credit-card"></i> My Rental History</h2>
             <div class="restricted-notice">
-                💳 Showing only your rental records
+                <i class="fas fa-info-circle"></i> Showing only your rental records
             </div>
             <div class="search-box">
                 <input type="text" id="rentals-search" placeholder="Search..." onkeyup="filterTable('rentals')">
             </div>
             <div id="rentals-loading" class="loading"><div class="spinner"></div></div>
             <div id="rentals-empty" class="empty-state" style="display: none;">
-                <div class="empty-state-icon">💳</div>
+                <div class="empty-state-icon"><i class="fas fa-credit-card"></i></div>
                 <p>You haven't rented any items yet</p>
             </div>
             <div class="table-wrapper">
@@ -501,24 +502,24 @@
         <!-- CATALOG TAB -->
         <div id="catalog" class="tab-content">
             <div class="alert" id="catalog-alert"></div>
-            <h2 class="section-title">📚 Browse Available Products</h2>
+            <h2 class="section-title"><i class="fas fa-book-open"></i> Browse Available Products</h2>
             <div class="restricted-notice">
-                📚 Browse our complete product catalog
+                <i class="fas fa-info-circle"></i> Browse our complete product catalog
             </div>
             <div class="search-box">
                 <input type="text" id="catalog-search" placeholder="Search products..." onkeyup="filterProducts()">
             </div>
             <div id="catalog-loading" class="loading"><div class="spinner"></div></div>
             <div id="catalog-empty" class="empty-state" style="display: none;">
-                <div class="empty-state-icon">📦</div>
+                <div class="empty-state-icon"><i class="fas fa-box"></i></div>
                 <p>No products available at this time</p>
             </div>
             <div id="catalog-content" class="product-grid" style="display: none;"></div>
             <div style="padding:20px;border-top:1px solid #eee;background:#fafafa">
-                <h3 style="margin-bottom:10px">🛒 Cart</h3>
+                <h3 style="margin-bottom:10px"><i class="fas fa-shopping-cart"></i> Cart</h3>
                 <div id="cart-content">No items in cart</div>
                 <div style="margin-top:10px;text-align:right">
-                    <label style="margin-right:8px"><input type="checkbox" id="cart-delivery"> Delivery</label>
+                    <label style="margin-right:8px"><input type="checkbox" id="cart-delivery"><i class="fas fa-motorcycle"></i> Delivery</label>
                     <input id="cart-address" placeholder="Delivery address" style="padding:8px;border:1px solid #ddd;border-radius:4px;width:40%;display:inline-block;margin-right:8px">
                     <button onclick="checkoutOrder()" style="background:#28a745;color:white;padding:8px 12px;border-radius:6px;border:none;cursor:pointer">Checkout</button>
                 </div>
@@ -538,7 +539,7 @@
                 return;
             }
             
-            document.getElementById('userDisplay').textContent = `👤 ${currentUser.username} (Customer)`;
+            document.getElementById('userDisplay').textContent = `Xin chào, ${currentUser.username} (Customer)`;
             loadProfile();
             loadStats();
         });
@@ -671,7 +672,7 @@
                             <td>${item.TenVatPham}</td>
                             <td>${item.NgayMuon}</td>
                             <td>${item.HanTra || '-'}</td>
-                            <td>${item.TinhTrangSauKhiTra || '-'}</td>
+                            <td>${colorize(item.TinhTrangSauKhiTra) || '-'}</td>
                         </tr>
                     `;
                 });
@@ -772,11 +773,11 @@
                             <span class="product-price">${(p.GiaNiemYet || 0).toLocaleString('vi-VN')} ₫</span>
                         </div>
                         <div class="product-qty ${qtyClass}">
-                            📦 ${qtyText}
+                            <i class="fas fa-info-circle"></i> ${qtyText}
                         </div>
                         <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
                             <input type="number" min="1" max="${p.SoLuongKhaDung||0}" value="1" id="qty-${p.IDVatPham}" style="width:80px;padding:6px;border:1px solid #ddd;border-radius:4px">
-                            <button onclick="addToCart(${p.IDVatPham}, '${p.TenVatPham}', ${p.GiaNiemYet||0})" style="background:#007bff;color:white;padding:8px 12px;border-radius:6px;border:none;cursor:pointer">Add to Cart</button>
+                            <button onclick="addToCart(${p.IDVatPham}, '${p.TenVatPham}', ${p.GiaNiemYet||0})" style="background:#007bff;color:white;padding:8px 12px;border-radius:6px;border:none;cursor:pointer"><i class="fas fa-shopping-cart"></i> Add to Cart</button>
                         </div>
                     </div>
                 `;
@@ -841,6 +842,16 @@
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             window.location.href = '/login.html';
+        }
+
+        function colorize(status) {
+            if (!status) return '';
+            const s = status.toLowerCase();
+            let color = '#333';
+            if (s.includes('good') || s.includes('tốt')) color = 'green';
+            else if (s.includes('damaged') || s.includes('hỏng')) color = 'red';
+            else if (s.includes('late') || s.includes('trễ')) color = 'orange';
+            return `<span style="color: ${color}; font-weight: bold;">${status}</span>`;
         }
     </script>
 </body>
