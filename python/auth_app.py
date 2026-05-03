@@ -435,12 +435,6 @@ def create_employee():
         except Exception:
             return jsonify({"error": "NgaySinh must be a valid date in YYYY-MM-DD format"}), 400
 
-        # Server-side age check (ensure >= 18)
-        today = date.today()
-        age = today.year - ngay_sinh_date.year - ((today.month, today.day) < (ngay_sinh_date.month, ngay_sinh_date.day))
-        if age < 18:
-            return jsonify({"error": "Nhân viên phải đủ 18 tuổi trở lên."}), 400
-
         if id_quan_ly:
             cur.execute("SELECT CongViec FROM NhanVien WHERE IDNhanVien=%s", (id_quan_ly,))
             mgr = cur.fetchone()
@@ -499,11 +493,6 @@ def update_employee(id):
         except Exception:
             return jsonify({"error": "NgaySinh must be a valid date in YYYY-MM-DD format"}), 400
 
-        # Server-side age check (ensure >= 18) for updates as well
-        today = date.today()
-        age = today.year - ngay_sinh_date.year - ((today.month, today.day) < (ngay_sinh_date.month, ngay_sinh_date.day))
-        if age < 18:
-            return jsonify({"error": "Nhân viên phải đủ 18 tuổi trở lên."}), 400
 
         # If an IDQuanLy (manager) is provided, fetch their CongViec to set BoPhanQuanLy
         bo_phan = data.get('BoPhanQuanLy')

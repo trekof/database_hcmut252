@@ -789,8 +789,6 @@
                 // client-side required check for birthdate and age >= 18
                 const dob = document.getElementById('emp-dob').value;
                 if (!dob) { showAlert('employees-alert', 'Birthdate is required', 'error'); return; }
-                const age = calculateAge(dob);
-                if (age < 18) { showAlert('employees-alert', 'Employee must be at least 18 years old', 'error'); return; }
                 const res = await fetch(`${API_URL}/employees`, {
                     method: 'POST',
                     headers: getAuthHeader(),
