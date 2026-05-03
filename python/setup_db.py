@@ -1,11 +1,12 @@
 # python/setup_db.py
+import os
 import sys
 from pathlib import Path
 
 # Thêm path để import db.py
 sys.path.insert(0, str(Path(__file__).parent))
 
-from db import get_mysql_conn
+from db import get_mysql_conn, get_mysql_server_connection
 
 
 def run_sql_file(path):
@@ -67,25 +68,24 @@ def run_routine_file(path):
 
 
 if __name__ == "__main__":
-    import os
-    from dotenv import load_dotenv
-    
-    load_dotenv()
-    
-    # Lấy đường dẫn thư mục SQL
+    # Lấy đường dẫn thư mục SQL (db.py đã load .env từ thư mục gốc repo)
     sql_dir = os.path.join(os.path.dirname(__file__), "..", "sql")
     
     print("🔧 Setting up database...")
     print()
     
-    # Drop and recreate database
+    # Drop and recreate database — phải kết nối không chọn schema (không dùng get_mysql_conn)
     try:
-        conn = get_mysql_conn()
-        cur = conn.cursor()
         db_name = os.getenv("MYSQL_DB")
-        
-        cur.execute(f"DROP DATABASE IF EXISTS {db_name}")
-        cur.execute(f"CREATE DATABASE {db_name}")
+        if not db_name:
+            raise RuntimeError("Thiếu MYSQL_DB trong .env")
+        conn = get_mysql_server_connection()
+        cur = conn.cursor()
+        cur.execute(f"DROP DATABASE IF EXISTS `{db_name.replace(chr(96), '')}`")
+        cur.execute(
+            f"CREATE DATABASE `{db_name.replace(chr(96), '')}` "
+            "CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+        )
         conn.commit()
         cur.close()
         conn.close()

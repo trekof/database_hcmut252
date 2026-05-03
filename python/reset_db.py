@@ -7,19 +7,9 @@ Useful for resetting your database to a clean state
 import sys
 from pathlib import Path
 import mysql.connector
-from dotenv import load_dotenv
 import os
 
-# Load environment variables
-load_dotenv()
-
-MYSQL_CONFIG = {
-    "host": os.getenv("MYSQL_HOST"),
-    "port": int(os.getenv("MYSQL_PORT", 3306)),
-    "user": os.getenv("MYSQL_USER"),
-    "password": os.getenv("MYSQL_PASSWORD"),
-    "autocommit": True  # For DDL operations
-}
+from db import get_mysql_server_connection
 
 def reset_database():
     """Drop and recreate the database"""
@@ -27,7 +17,7 @@ def reset_database():
     
     try:
         # Connect to MySQL (without selecting database)
-        conn = mysql.connector.connect(**MYSQL_CONFIG)
+        conn = get_mysql_server_connection()
         cur = conn.cursor()
         
         print(f"🔄 Resetting database '{db_name}'...")

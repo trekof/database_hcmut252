@@ -7,24 +7,15 @@ This script executes `sql/07_init_users.sql` to initialize demo users.
 import os
 import sys
 from pathlib import Path
-import mysql.connector
-from dotenv import load_dotenv
 
-load_dotenv()
+from db import get_mysql_conn
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 SQL_FILE = BASE_DIR / 'sql' / '07_init_users.sql'
 
 def run_sql_file(path):
-    cfg = {
-        'host': os.getenv('MYSQL_HOST', 'localhost'),
-        'port': int(os.getenv('MYSQL_PORT', 3306)),
-        'user': os.getenv('MYSQL_USER', 'root'),
-        'password': os.getenv('MYSQL_PASSWORD', ''),
-        'database': os.getenv('MYSQL_DB', 'btl2_db')
-    }
     try:
-        conn = mysql.connector.connect(**cfg)
+        conn = get_mysql_conn()
         cur = conn.cursor()
         with open(path, 'r', encoding='utf-8') as f:
             sql = f.read()

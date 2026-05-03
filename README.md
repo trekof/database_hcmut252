@@ -1,52 +1,79 @@
 # BTL CSDL - Bookstore / Library Project
 
-This repository contains SQL (DDL, constraints, procedures, triggers, functions) and a lightweight Flask backend + static frontend used for the course project.
+SQL (DDL, constraints, **stored procedures**, triggers, functions) và Flask backend nhẹ kèm frontend tĩnh cho đồ án.
 
-**Layout (important files)**
-
-- sql/: schema and routines (01_create_tables.sql ... 07_init_users.sql)
-- python/: backend and helper scripts (see below)
-- tools/extract_docx.py: DOCX -> plain text extractor
-- requirements.txt
-- README.md (this file)
-
-Relevant files:
-- [python/setup_db.py](python/setup_db.py)
-- [python/init_users.py](python/init_users.py)
-- [python/auth_app.py](python/auth_app.py)
-- [python/customer.html](python/customer.html)
-- [python/admin.html](python/admin.html)
-- [tools/extract_docx.py](tools/extract_docx.py)
-
-**Quick summary:** run `setup_db.py` to execute the SQL files in `sql/`, seed demo users with `init_users.py`, run the Flask API with `auth_app.py`, and open the static HTML pages in `python/` for admin/cashier/customer views.
+**README — bản cập nhật workflow frontend/backend:** CRUD sản phẩm đi qua **stored procedure**; Admin có **tìm kiếm sách** và **thống kê bán hàng** gọi thủ tục chỉ đọc (phần 2.3).
 
 ---
 
-**Prerequisites**
+## Layout (file quan trọng)
+
+- `sql/` — schema và routine (`01_create_tables.sql` … `07_init_users.sql`; thủ tục BTL trong `04_procedures.sql`)
+- `python/` — backend và HTML tĩnh
+- `tools/extract_docx.py` — trích DOCX → text
+- `requirements.txt`
+
+File liên quan trực tiếp:
+
+- [python/setup_db.py](python/setup_db.py) — chạy toàn bộ SQL (routine tách block `END;`)
+- [python/init_users.py](python/init_users.py) — seed user demo (thường đã chạy trong `setup_db` qua `07_init_users.sql`)
+- [python/auth_app.py](python/auth_app.py) — API Flask + `CALL` procedure
+- [python/db.py](python/db.py) — kết nối MySQL (đọc `.env` từ **thư mục gốc repo**; Windows nên `MYSQL_HOST=127.0.0.1` để tránh named pipe)
+- [python/login.html](python/login.html), [python/admin.html](python/admin.html), [python/customer.html](python/customer.html)
+
+---
+
+## Thủ tục (Procedure) — phần BTL 2.1 & 2.3 (`sql/04_procedures.sql`)
+
+### Phần 2.1 — Một bảng `VatPham`: INSERT, UPDATE, DELETE + validate
+
+| Thủ tục | Mục đích |
+|---------|-----------|
+| `sp_btl21_vat_pham_insert` | Thêm vật phẩm: kiểm tra tên không rỗng / độ dài, giá > 0, tồn ≥ 0, không trùng `TenVatPham`; trả `IDVatPham` qua `SELECT LAST_INSERT_ID()` |
+| `sp_btl21_vat_pham_update` | Cập nhật theo ID: cùng rule; không trùng tên với bản ghi khác |
+| `sp_btl21_vat_pham_delete` | Xóa chỉ khi **không** còn dòng trong `DonHangChiTiet`; lỗi dùng `SIGNAL` cụ thể (ví dụ đã có trong đơn hàng) |
+
+Lỗi nghiệp vụ dùng `SIGNAL SQLSTATE '45000'` với `MESSAGE_TEXT` tiếng Việt có nghĩa (không chung chung).
+
+### Phần 2.3 — Chỉ `SELECT`, tham số cho WHERE / HAVING
+
+| Thủ tục | Mục đích |
+|---------|-----------|
+| `sp_btl23_tim_sach` | `VatPham` **JOIN** `Sach`: lọc từ khóa (tên hoặc tác giả), năm XB min/max, giá min/max; **ORDER BY** giá, tên |
+| `sp_btl23_thong_ke_ban_vat_pham` | Join `VatPham`, `DonHangChiTiet`, `DonMuaHang`; **WHERE** khoảng `NgayMua`; **GROUP BY** vật phẩm; **HAVING** tổng doanh ≥ tham số; **ORDER BY** doanh giảm dần |
+
+**Ví dụ gọi trong MySQL / báo cáo:**
+
+```sql
+CALL sp_btl23_tim_sach(NULL, NULL, NULL, NULL, NULL);
+CALL sp_btl23_tim_sach('Sách', 2020, 2026, 50000, 500000);
+CALL sp_btl23_thong_ke_ban_vat_pham('2025-01-01', '2025-12-31', 100000);
+```
+
+**Lưu ý deploy SQL:** `setup_db.py` khi chạy file routine **bỏ qua** khối có `strip()` bắt đầu bằng `--`; các thủ tục BTL được đặt sao cho khối thực thi không chỉ là comment.
+
+---
+
+## Prerequisites
 
 - Python 3.8+
-- MySQL 5.7+ (or compatible)
-- Create a database in MySQL for the project (example: `btl2_db`)
-
-Install Python dependencies:
+- MySQL 5.7+ (hoặc tương thích)
 
 ```bash
 python -m venv .venv
-.venv\Scripts\Activate.ps1   # PowerShell on Windows
+.venv\Scripts\Activate.ps1   # PowerShell Windows
 python -m pip install -r requirements.txt
 python -m pip install python-docx
 ```
 
-Create the database in MySQL (example):
-
 ```sql
-CREATE DATABASE btl2_db;
+CREATE DATABASE IF NOT EXISTS btl2_db;
 ```
 
-Create a `.env` file in the repo root with your DB credentials (example):
+`.env` ở **gốc repo** (đã có trong `.gitignore`, không commit mật khẩu):
 
 ```env
-MYSQL_HOST=localhost
+MYSQL_HOST=127.0.0.1
 MYSQL_PORT=3306
 MYSQL_DB=btl2_db
 MYSQL_USER=root
@@ -55,97 +82,88 @@ MYSQL_PASSWORD=your_password
 
 ---
 
-**Database setup (run once or to reset)**
-
-From the repository root:
+## Database setup
 
 ```bash
 python python/setup_db.py
-python python/init_users.py
 ```
 
-- `setup_db.py` runs the ordered SQL files under `sql/` and correctly handles routines (procedures/functions/triggers). Check output for any SQL errors.
-- `init_users.py` inserts demo users (Admin/Cashier/Customer) using `sql/07_init_users.sql`.
+(`setup_db` có thể đã chạy `07_init_users.sql`; chỉ cần `python python/init_users.py` nếu bạn muốn chạy riêng.)
 
 ---
 
-**Run the backend API**
+## Chạy backend
 
 ```bash
 python python/auth_app.py
 ```
 
-The API listens on http://localhost:5000 by default. Key endpoints used by the frontends:
+Mặc định: `http://127.0.0.1:5000`
 
-- `POST /api/auth/login` — login (returns token and user info)
-- `GET /api/customers/me` — get current customer profile
-- `PATCH /api/customers/me` — update customer profile (customers only)
-- `GET /api/products` — list products
-- `POST /api/products` — create product (Admin only)
-- `PUT /api/products/<id>` — update product (Admin only)
-- `POST /api/orders` — create an order (Customer)
+### API — luồng frontend/backend
 
----
+**Auth / khách**
 
-**Frontend (static pages)**
+- `POST /api/auth/login` — đăng nhập (JWT)
+- `GET/PATCH /api/customers/me` — profile khách (customer)
+- `POST /api/orders` — tạo đơn (customer)
 
-Files are under `python/` and are simple static HTML + JS that call the API:
+**Sản phẩm (`VatPham`)**
 
-- [python/login.html](python/login.html) — login page (demo buttons provided)
-- [python/admin.html](python/admin.html) — Admin dashboard (add/update products, manage users)
-- [python/customer.html](python/customer.html) — Customer view (view/edit profile, cart & checkout)
+- `GET /api/products` — danh sách
+- `GET /api/products/<id>` — một dòng
+- `POST /api/products` — **Admin**, gọi `sp_btl21_vat_pham_insert`
+- `PUT /api/products/<id>` — **Admin**, gọi `sp_btl21_vat_pham_update` (kể cả tăng tồn từ Admin UI)
+- `DELETE /api/products/<id>` — **Admin**, gọi `sp_btl21_vat_pham_delete`
+- `GET /api/products/search-books?tu_khoa=&nam_xb_min=&nam_xb_max=&gia_min=&gia_max=` — `sp_btl23_tim_sach` (đã đăng nhập)
+- `GET /api/products/stats-sales?tu_ngay=&den_ngay=&doanh_toi_thieu=` — `sp_btl23_thong_ke_ban_vat_pham`
 
-Open these files in a browser (or serve them via a static file server). Use the demo credentials seeded by `init_users.py`.
-
-Admin behavior added:
-- Per-product `Qty` input + `Add` button to increment stock (uses existing `PUT /api/products/<id>` endpoint). You can also add products using the Add Product form.
-
-Customer behavior added:
-- Profile is shown read-only with an `Edit Profile` button that enables fields. `Save` calls `PATCH /api/customers/me`.
+Phản hồi lỗi từ procedure (SIGNAL) trả HTTP **400** và JSON `{ "error": "..." }`.
 
 ---
 
-**Extract DOCX (for BTL description)**
+## Frontend (static)
 
-If you have `Mô tả BTL2-2.docx` or similar, extract plain text for review before adding to SQL/rules:
+Mở file HTML trong `python/` (hoặc phục vụ tĩnh):
+
+- **login.html** — đăng nhập, nút demo
+- **admin.html** — nhân viên, khách, **Products** (form thêm, tăng tồn, xóa), **tìm sách** & **thống kê bán** (gọi hai GET trên), mượn/thuê
+- **customer.html** — profile (Edit/Save), giỏ, checkout
+
+---
+
+## Trích DOCX (mô tả BTL)
 
 ```bash
 python tools/extract_docx.py "Mô tả BTL2-2.docx" docs/btl2.txt
 ```
 
-The extractor uses `python-docx` and writes paragraphs/tables to the output text file.
-
 ---
 
-**Basic manual tests**
+## Kiểm tra nhanh
 
-1. Start backend: `python python/auth_app.py`
-2. Login via `python/login.html` using demo accounts.
-3. As Admin: open `python/admin.html` → Products tab → create product → use per-product Add to increase stock.
-4. As Customer: open `python/customer.html` → Edit profile → Save → verify values persisted.
+1. `python python/setup_db.py`, bật MySQL
+2. `python python/auth_app.py`
+3. Đăng nhập **admin** qua `login.html` → `admin.html` → tab Products: thêm sản phẩm, tìm sách, thống kê
+4. Khách: `customer.html` — sửa profile, đặt hàng
 
-Optional: use `curl` or HTTP client to exercise endpoints. Example to create a product (Admin token required):
+Ví dụ tạo sản phẩm (Bearer Admin):
 
 ```bash
 curl -X POST http://localhost:5000/api/products \
   -H "Authorization: Bearer <TOKEN>" -H "Content-Type: application/json" \
-  -d '{"TenVatPham":"New Book","SoLuongKhaDung":10,"GiaNiemYet":120000}'
+  -d "{\"TenVatPham\":\"New Book\",\"SoLuongKhaDung\":10,\"GiaNiemYet\":120000}"
 ```
 
 ---
 
-**Troubleshooting**
+## Troubleshooting
 
-- "No module named mysql.connector": `pip install mysql-connector-python`
-- DB connection issues: verify `.env`, MySQL running, database exists
-- SQL errors during `setup_db.py`: inspect the failing SQL file (path printed in output) and check syntax/compatibility with your MySQL version.
+- `mysql.connector` thiếu: `pip install mysql-connector-python`
+- Không kết nối DB: kiểm tra `.env`, dịch vụ MySQL, database tồn tại
+- Windows lỗi named pipe / `host: .`: dùng `MYSQL_HOST=127.0.0.1` (đã xử lý thêm trong `db.py`)
+- Lỗi khi `setup_db.py` với routine: xem file SQL được in trong log
 
 ---
 
-If you want, I can:
-- update this README with more examples and screenshots, or
-- add a small smoke-test script that runs setup + a few API calls and reports results.
-
-Made for BTL CSDL — updated README to reflect frontend/backend workflows.
-
-**Made for BTL CSDL** ✨
+**Made for BTL CSDL** — README cập nhật: thủ tục 2.1/2.3, endpoint gọi `CALL`, workflow Admin tìm kiếm / thống kê.
