@@ -1,4 +1,3 @@
--- 06_functions.sql
 -- Tạo FUNCTION để tính toán hoặc xử lý dữ liệu
 
 -- Function: Tính tổng tiền một đơn hàng (không tính phí vận chuyển)
@@ -126,3 +125,106 @@ BEGIN
     WHERE d.IDKhachHang = p_IDKhachHang;
     RETURN COALESCE(avg_value, 0);
 END;
+
+
+-- Function: Tính chiết khấu cho khách hàng dựa trên tổng doanh thu trong năm
+CREATE FUNCTION fn_tinh_chiet_khau_khach_hang(
+    p_IDKhachHang VARCHAR(20)
+) 
+RETURNS DECIMAL(15,2)
+READS SQL DATA
+BEGIN
+    -- Khai báo biến
+    DECLARE v_done INT DEFAULT 0;
+    DECLARE v_giaTriDon DECIMAL(15,2);
+    DECLARE v_tongDoanhThu DECIMAL(15,2) DEFAULT 0;
+    DECLARE v_chietKhau DECIMAL(15,2) DEFAULT 0;
+    
+    -- Khai báo con trỏ (Cursor)
+    DECLARE cur_donHang CURSOR FOR 
+        SELECT SUM(ct.SoLuong * ct.GiaLucMua)
+        FROM DonMuaHang d
+        JOIN DonHangChiTiet ct ON d.IDDonMuaHang = ct.IDDonMuaHang
+        WHERE d.IDKhachHang = p_IDKhachHang;
+        
+    -- Khai báo điều kiện thoát cho con trỏ
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_done = 1;
+
+    -- Kiểm tra tham số đầu vào
+    IF p_IDKhachHang IS NULL OR TRIM(p_IDKhachHang) = '' THEN
+        RETURN 0;
+    END IF;
+
+    -- Mở con trỏ
+    OPEN cur_donHang;
+    
+    read_loop: LOOP
+        FETCH cur_donHang INTO v_giaTriDon;
+        IF v_done THEN
+            LEAVE read_loop;
+        END IF;
+        
+        -- Tính toán tổng doanh thu bằng vòng lặp
+        SET v_tongDoanhThu = v_tongDoanhThu + IFNULL(v_giaTriDon, 0);
+        
+    END LOOP;
+    
+    -- Đóng con trỏ
+    CLOSE cur_donHang;
+
+    -- Sử dụng câu lệnh IF để tính toán dữ liệu
+    IF v_tongDoanhThu >= 10000000 THEN
+        SET v_chietKhau = v_tongDoanhThu * 0.05; -- Chiết khấu 5%
+    ELSEIF v_tongDoanhThu >= 5000000 THEN
+        SET v_chietKhau = v_tongDoanhThu * 0.02; -- Chiết khấu 2%
+    ELSE
+        SET v_chietKhau = 0;
+    END IF;
+
+    RETURN v_chietKhau;
+END
+
+-- Function: Kiểm tra hạn mức mượn của khách hàng dựa trên số lượng mượn hiện tại
+CREATE FUNCTION fn_kiem_tra_han_muc_muon(
+    p_CCCD_CMND VARCHAR(20)
+)
+RETURNS INT
+READS SQL DATA
+BEGIN
+    DECLARE v_done INT DEFAULT 0;
+    DECLARE v_soLuongMuon INT;
+    DECLARE v_tongSoLuong INT DEFAULT 0;
+
+    -- Khai báo con trỏ
+    DECLARE cur_lanMuon CURSOR FOR
+        SELECT COUNT(MaDonMuon)
+        FROM LanMuon
+        WHERE CCCD_CMND = p_CCCD_CMND
+        GROUP BY IDVatPham;
+        
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_done = 1;
+
+    -- Kiểm tra tham số đầu vào
+    IF p_CCCD_CMND IS NULL OR LENGTH(p_CCCD_CMND) < 9 THEN
+        RETURN -1; -- Mã không hợp lệ
+    END IF;
+
+    OPEN cur_lanMuon;
+    
+    read_loop: LOOP
+        FETCH cur_lanMuon INTO v_soLuongMuon;
+        IF v_done THEN
+            LEAVE read_loop;
+        END IF;
+        
+        -- Dùng IF để kiểm tra điều kiện cộng dồn
+        IF v_soLuongMuon > 0 THEN
+            SET v_tongSoLuong = v_tongSoLuong + v_soLuongMuon;
+        END IF;
+        
+    END LOOP;
+    
+    CLOSE cur_lanMuon;
+
+    RETURN v_tongSoLuong;
+END

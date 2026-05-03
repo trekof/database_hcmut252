@@ -1,7 +1,6 @@
--- 04_procedures.sql
 -- Tạo PROCEDURE cho hệ thống quản lý bán hàng, giao hàng, cho thuê
 
--- ===== NHÂN VIÊN =====
+-- ===== NHÂN VIÊN (đã thêm validate)=====
 -- Procedure: Thêm nhân viên mới
 CREATE PROCEDURE sp_insert_nhan_vien(
     IN p_IDNhanVien VARCHAR(20),
@@ -14,8 +13,34 @@ CREATE PROCEDURE sp_insert_nhan_vien(
     IN p_BoPhanQuanLy VARCHAR(50)
 )
 BEGIN
+    -- Kiểm tra ID không được để trống
+    IF p_IDNhanVien IS NULL OR TRIM(p_IDNhanVien) = '' THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Lỗi: Mã nhân viên không được để trống!';
+    END IF;
+
+    -- Kiểm tra độ dài và định dạng CMND/CCCD
+    IF LENGTH(p_CMND_CCCD) NOT IN (9, 12) OR p_CMND_CCCD REGEXP '[^0-9]' THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Lỗi: Độ dài hoặc định dạng CMND/CCCD không hợp lệ (phải là 9 hoặc 12 chữ số)!';
+    END IF;
+
+    -- Kiểm tra tuổi nhân viên (phải từ đủ 18 tuổi)
+    IF TIMESTAMPDIFF(YEAR, p_NgaySinh, CURDATE()) < 18 THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Lỗi: Nhân viên phải đủ 18 tuổi trở lên!';
+    END IF;
+
+    -- Kiểm tra số điện thoại (đúng chuẩn 10-11 số)
+    IF p_SDT REGEXP '[^0-9]' OR LENGTH(p_SDT) < 10 THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Lỗi: Định dạng số điện thoại không hợp lệ!';
+    END IF;
+
+    -- Kiểm tra tồn tại
     IF EXISTS (SELECT 1 FROM NhanVien WHERE IDNhanVien = p_IDNhanVien) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Nhân viên đã tồn tại';
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Lỗi: Mã nhân viên đã tồn tại trong hệ thống!';
     END IF;
     
     INSERT INTO NhanVien (IDNhanVien, CMND_CCCD, Ho, Ten, NgaySinh, SDT, CongViec, BoPhanQuanLy)
@@ -34,15 +59,29 @@ BEGIN
     SELECT IDNhanVien, Ho, Ten, NgaySinh, SDT, CongViec, BoPhanQuanLy FROM NhanVien WHERE IDNhanVien = p_IDNhanVien;
 END;
 
--- ===== KHÁCH HÀNG =====
+-- ===== KHÁCH HÀNG (đã thêm validate)=====
 -- Procedure: Thêm khách hàng mới
 CREATE PROCEDURE sp_insert_khach_hang(
     IN p_IDKhachHang VARCHAR(20),
     IN p_SDT VARCHAR(15)
 )
 BEGIN
+    -- Kiểm tra ID không được để trống
+    IF p_IDKhachHang IS NULL OR TRIM(p_IDKhachHang) = '' THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Lỗi: Mã khách hàng không được để trống!';
+    END IF;
+
+    -- Kiểm tra số điện thoại
+    IF p_SDT REGEXP '[^0-9]' OR LENGTH(p_SDT) < 10 THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Lỗi: Số điện thoại khách hàng không đúng định dạng!';
+    END IF;
+
+    -- Kiểm tra tồn tại
     IF EXISTS (SELECT 1 FROM KhachHang WHERE IDKhachHang = p_IDKhachHang) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Khách hàng đã tồn tại';
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Lỗi: Khách hàng đã tồn tại trong hệ thống!';
     END IF;
     
     INSERT INTO KhachHang (IDKhachHang, SDT, DiemTichLuy)
@@ -70,7 +109,7 @@ BEGIN
     WHERE IDKhachHang = p_IDKhachHang;
 END;
 
--- ===== VẬT PHẨM =====
+-- ===== VẬT PHẨM (đã thêm validate và DELETE)=====
 -- Procedure: Thêm vật phẩm mới
 CREATE PROCEDURE sp_insert_vat_pham(
     IN p_TenVatPham VARCHAR(100),
@@ -78,6 +117,18 @@ CREATE PROCEDURE sp_insert_vat_pham(
     IN p_GiaNiemYet DECIMAL(10, 2)
 )
 BEGIN
+    -- Kiểm tra ràng buộc ngữ nghĩa nghiệp vụ: Tên vật phẩm không được trùng
+    IF EXISTS (SELECT 1 FROM VatPham WHERE TenVatPham = p_TenVatPham) THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Lỗi: Tên vật phẩm đã tồn tại trong hệ thống!';
+    END IF;
+    
+    -- Kiểm tra giá trị tiền tệ hợp lệ
+    IF p_GiaNiemYet <= 0 THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Lỗi: Giá niêm yết của vật phẩm phải lớn hơn 0!';
+    END IF;
+
     INSERT INTO VatPham (TenVatPham, SoLuongKhaDung, GiaNiemYet)
     VALUES (p_TenVatPham, p_SoLuongKhaDung, p_GiaNiemYet);
 END;
@@ -88,21 +139,61 @@ BEGIN
     SELECT IDVatPham, TenVatPham, SoLuongKhaDung, GiaNiemYet FROM VatPham ORDER BY IDVatPham;
 END;
 
--- Procedure: Cập nhật số lượng vật phẩm
-CREATE PROCEDURE sp_update_so_luong_vat_pham(
+-- Procedure: Cập nhật thông tin vật phẩm
+CREATE PROCEDURE sp_update_vat_pham(
     IN p_IDVatPham INT,
-    IN p_SoLuongKhaDung INT
+    IN p_TenVatPham VARCHAR(100),
+    IN p_SoLuongKhaDung INT,
+    IN p_GiaNiemYet DECIMAL(10, 2)
 )
 BEGIN
+    -- Kiểm tra xem vật phẩm có tồn tại không
     IF NOT EXISTS (SELECT 1 FROM VatPham WHERE IDVatPham = p_IDVatPham) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Vật phẩm không tồn tại';
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Lỗi: Không tìm thấy vật phẩm cần cập nhật trong cơ sở dữ liệu!';
     END IF;
-    
-    UPDATE VatPham SET SoLuongKhaDung = p_SoLuongKhaDung WHERE IDVatPham = p_IDVatPham;
+
+    -- Kiểm tra xem tên mới có bị trùng với vật phẩm khác không
+    IF EXISTS (SELECT 1 FROM VatPham WHERE TenVatPham = p_TenVatPham AND IDVatPham != p_IDVatPham) THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Lỗi: Tên vật phẩm mới bị trùng lặp với vật phẩm khác!';
+    END IF;
+
+    -- Kiểm tra ràng buộc dữ liệu
+    IF p_SoLuongKhaDung < 0 THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Lỗi: Số lượng khả dụng không được nhỏ hơn 0!';
+    END IF;
+
+    UPDATE VatPham 
+    SET TenVatPham = p_TenVatPham, 
+        SoLuongKhaDung = p_SoLuongKhaDung, 
+        GiaNiemYet = p_GiaNiemYet
+    WHERE IDVatPham = p_IDVatPham;
 END;
 
--- ===== ĐƠN HÀNG =====
--- Procedure: Tạo đơn hàng mới
+-- Procedure: Xóa vật phẩm
+CREATE PROCEDURE sp_delete_vat_pham(
+    IN p_IDVatPham INT
+)
+BEGIN
+    -- 1. Kiểm tra xem vật phẩm có tồn tại không
+    IF NOT EXISTS (SELECT 1 FROM VatPham WHERE IDVatPham = p_IDVatPham) THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Lỗi: Vật phẩm cần xóa không tồn tại trong hệ thống!';
+    END IF;
+
+    -- 2. Kiểm tra xem có đơn hàng nào chứa vật phẩm này không
+    IF EXISTS (SELECT 1 FROM DonHangChiTiet WHERE IDVatPham = p_IDVatPham) THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Lỗi: Không thể xóa vật phẩm này vì đã phát sinh giao dịch trong đơn hàng!';
+    END IF;
+
+    -- 3. Tiến hành xóa
+    DELETE FROM VatPham WHERE IDVatPham = p_IDVatPham;
+END;
+-- ===== ĐƠN HÀNG  =====
+-- Procedure: Tạo đơn hàng mới (đã thêm validate)
 CREATE PROCEDURE sp_insert_don_mua_hang(
     IN p_LoaiHoaDon VARCHAR(50),
     IN p_NgayMua DATE,
@@ -110,8 +201,16 @@ CREATE PROCEDURE sp_insert_don_mua_hang(
     OUT p_IDDonMuaHang INT
 )
 BEGIN
+    -- Kiểm tra ngày mua không được ở tương lai
+    IF p_NgayMua > CURDATE() THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Lỗi: Ngày mua hàng không được vượt quá ngày hiện tại!';
+    END IF;
+
+    -- Kiểm tra khách hàng tồn tại trong hệ thống
     IF NOT EXISTS (SELECT 1 FROM KhachHang WHERE IDKhachHang = p_IDKhachHang) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Khách hàng không tồn tại';
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Lỗi: Khách hàng không tồn tại trong cơ sở dữ liệu!';
     END IF;
     
     INSERT INTO DonMuaHang (LoaiHoaDon, NgayMua, IDKhachHang)
@@ -162,7 +261,8 @@ BEGIN
     VALUES (p_IDDonMuaHang, p_DiaChiNhanHang, p_TrangThai, p_PhiVanChuyen, p_IDNhanVien);
 END;
 
--- Procedure: Lấy danh sách giao hàng theo tài xế
+-- Procedure: Lấy danh sách giao hàng theo tài xế 
+-- Thoả yêu cầu truy vấn từ 2 bảng trở lên, có WHERE, ORDER BY
 CREATE PROCEDURE sp_get_giao_hang_by_taxi(IN p_IDNhanVien VARCHAR(20))
 BEGIN
     SELECT g.IDDonMuaHang, d.NgayMua, d.LoaiHoaDon, d.IDKhachHang, g.PhiVanChuyen
@@ -292,3 +392,27 @@ BEGIN
     WHERE d.IDKhachHang = p_IDKhachHang
     GROUP BY d.IDKhachHang;
 END;
+
+-- Procedure: Tính tổng doanh thu theo khách hàng với điều kiện lọc 
+-- Thoả yêu cầu truy vấn có Aggregate Function, GROUP BY, HAVING, WHERE, ORDER BY và liên kết từ 2 bảng trở lên
+CREATE PROCEDURE sp_get_doanh_thu_khach_hang_loc(
+    IN p_IDKhachHang VARCHAR(20),
+    IN p_MinDoanhThu DECIMAL(15,2)
+)
+BEGIN
+    SELECT 
+        d.IDKhachHang, 
+        k.SDT, 
+        COUNT(DISTINCT d.IDDonMuaHang) AS SoHoaDon,
+        SUM(ct.SoLuong * ct.GiaLucMua) AS TongDoanhThu,
+        SUM(COALESCE(g.PhiVanChuyen, 0)) AS TongPhiVanChuyen,
+        (SUM(ct.SoLuong * ct.GiaLucMua) + SUM(COALESCE(g.PhiVanChuyen, 0))) AS TongThanhToan
+    FROM DonMuaHang d
+    LEFT JOIN DonHangChiTiet ct ON d.IDDonMuaHang = ct.IDDonMuaHang
+    LEFT JOIN GiaoTanNha g ON d.IDDonMuaHang = g.IDDonMuaHang
+    LEFT JOIN KhachHang k ON d.IDKhachHang = k.IDKhachHang
+    WHERE d.IDKhachHang = p_IDKhachHang
+    GROUP BY d.IDKhachHang, k.SDT
+    HAVING TongDoanhThu >= p_MinDoanhThu
+    ORDER BY TongDoanhThu DESC;
+END

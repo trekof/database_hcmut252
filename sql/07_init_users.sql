@@ -1,4 +1,3 @@
--- 07_init_users.sql
 -- Initialize demo users for the Library Management System
 -- Run this after creating tables and inserting sample data
 
