@@ -567,6 +567,7 @@
             <button class="tab-btn active" onclick="switchTab('billing', event)"><i class="fas fa-calculator"></i> Billing</button>
             <button class="tab-btn" onclick="switchTab('customers', event)"><i class="fas fa-users"></i> Customers</button>
             <button class="tab-btn" onclick="switchTab('products', event)"><i class="fas fa-box"></i> Products</button>
+            <button class="tab-btn" onclick="switchTab('orders', event)"><i class="fas fa-receipt"></i> Orders</button>
             <button class="tab-btn" onclick="switchTab('borrowing', event)"><i class="fas fa-book"></i> Borrowing</button>
             <button class="tab-btn" onclick="switchTab('rental', event)"><i class="fas fa-credit-card"></i> Rentals</button>
         </div>
@@ -698,6 +699,34 @@
             </div>
         </div>
 
+        <!-- ORDERS TAB -->
+        <div id="orders" class="tab-content">
+            <div class="alert" id="orders-alert"></div>
+            <div class="table-section" style="padding: 20px;">
+                <h3><i class="fas fa-receipt"></i> Sales Orders</h3>
+                <div class="section-info"><i class="fas fa-info-circle"></i> View order history and details</div>
+                <div class="search-box">
+                    <input type="text" id="orders-search" placeholder="Search orders..." onkeyup="filterTable('orders')">
+                </div>
+                <div id="orders-loading" class="loading"><div class="spinner"></div></div>
+                <div class="table-wrapper">
+                    <table id="orders-table" style="display: none; width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Customer</th>
+                                <th>Date</th>
+                                <th>Items</th>
+                                <th>Total</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orders-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <!-- BORROWING TAB -->
         <div id="borrowing" class="tab-content">
             <div class="alert" id="borrowing-alert"></div>
@@ -755,6 +784,16 @@
         </div>
     </div>
 
+    <div id="details-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; overflow-y:auto;">
+        <div style="background:white; max-width:700px; margin:50px auto; padding:20px; border-radius:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h3 id="details-title"></h3>
+                <button onclick="document.getElementById('details-modal').style.display='none'" style="background:none; border:none; font-size:1.5em; cursor:pointer;">×</button>
+            </div>
+            <div id="details-content" style="max-height:500px; overflow-y:auto;"></div>
+        </div>
+    </div>
+
     <script>
         const API_URL = 'http://localhost:5000/api';
         let token = localStorage.getItem('token');
@@ -789,6 +828,7 @@
                 if (tab === 'billing') loadBillingProducts();
                 else if (tab === 'customers') loadCustomers();
                 else if (tab === 'products') loadProducts();
+                else if (tab === 'orders') loadOrders();
                 else if (tab === 'borrowing') loadBorrowing();
                 else if (tab === 'rental') loadRental();
             }, 100);
@@ -804,6 +844,94 @@
                 document.getElementById('stat-rentals').textContent = data.rentals || 0;
             } catch (e) {
                 console.error('Stats error:', e);
+            }
+        }
+
+        async function loadOrders() {
+            try {
+                document.getElementById('orders-loading').style.display = 'block';
+                document.getElementById('orders-table').style.display = 'none';
+                const res = await fetch(`${API_URL}/orders`, { headers: getAuthHeader() });
+                const orders = await res.json();
+                const tbody = document.getElementById('orders-tbody');
+                tbody.innerHTML = '';
+
+                for (const order of orders) {
+                    try {
+                        const detailRes = await fetch(`${API_URL}/orders/${order.IDDonMuaHang}`, { headers: getAuthHeader() });
+                        const detail = await detailRes.json();
+                        const itemCount = detail.items ? detail.items.length : 0;
+                        const total = detail.items ? detail.items.reduce((sum, item) => sum + ((item.SoLuong || 0) * (item.GiaLucMua || 0)), 0) : 0;
+
+                        tbody.innerHTML += `
+                            <tr>
+                                <td>${order.IDDonMuaHang}</td>
+                                <td>${order.SDT || order.IDKhachHang || '-'}</td>
+                                <td>${order.NgayMua || '-'}</td>
+                                <td>${itemCount}</td>
+                                <td>${total.toLocaleString('vi-VN')} ₫</td>
+                                <td><button onclick="showOrderDetails(${order.IDDonMuaHang})" style="background:#17a2b8; padding:4px 8px; font-size:0.8em;"><i class="fas fa-eye"></i> View</button></td>
+                            </tr>
+                        `;
+                    } catch (e) {
+                        tbody.innerHTML += `
+                            <tr>
+                                <td>${order.IDDonMuaHang}</td>
+                                <td>${order.SDT || order.IDKhachHang || '-'}</td>
+                                <td>${order.NgayMua || '-'}</td>
+                                <td>-</td>
+                                <td>-</td>
+                                <td><button onclick="showOrderDetails(${order.IDDonMuaHang})" style="background:#17a2b8; padding:4px 8px; font-size:0.8em;"><i class="fas fa-eye"></i> View</button></td>
+                            </tr>
+                        `;
+                    }
+                }
+
+                if (orders.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: #999;">No orders</td></tr>';
+                }
+
+                document.getElementById('orders-loading').style.display = 'none';
+                document.getElementById('orders-table').style.display = 'table';
+            } catch (e) {
+                showAlert('orders-alert', 'Error loading orders', 'error');
+                document.getElementById('orders-loading').style.display = 'none';
+            }
+        }
+
+        async function showOrderDetails(orderId) {
+            try {
+                const res = await fetch(`${API_URL}/orders/${orderId}`, { headers: getAuthHeader() });
+                const order = await res.json();
+                if (!res.ok) throw new Error(order.error || 'Order not found');
+
+                const content = document.getElementById('details-content');
+                const customer = order.SDT ? `Customer: ${order.SDT}` : `Customer ID: ${order.IDKhachHang || '-'} `;
+                const orderDate = order.NgayMua || '-';
+                const items = order.items || [];
+                const itemRows = items.map(item => `<tr><td>${item.IDVatPham}</td><td>${item.TenVatPham || '-'}</td><td>${item.SoLuong}</td><td>${(item.GiaLucMua || 0).toLocaleString('vi-VN')} ₫</td><td>${((item.SoLuong || 0) * (item.GiaLucMua || 0)).toLocaleString('vi-VN')} ₫</td></tr>`).join('');
+                const total = items.reduce((sum, item) => sum + ((item.SoLuong || 0) * (item.GiaLucMua || 0)), 0);
+
+                content.innerHTML = `
+                    <div style="margin-bottom: 16px;"><strong>Order #${orderId}</strong> · ${customer}<br>Date: ${orderDate}</div>
+                    <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
+                        <thead>
+                            <tr>
+                                <th style="border-bottom:1px solid #ddd;padding:8px;text-align:left;">Product ID</th>
+                                <th style="border-bottom:1px solid #ddd;padding:8px;text-align:left;">Product Name</th>
+                                <th style="border-bottom:1px solid #ddd;padding:8px;text-align:right;">Qty</th>
+                                <th style="border-bottom:1px solid #ddd;padding:8px;text-align:right;">Price</th>
+                                <th style="border-bottom:1px solid #ddd;padding:8px;text-align:right;">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>${itemRows || '<tr><td colspan="4" style="padding:12px;text-align:center;color:#777;">No items found</td></tr>'}</tbody>
+                    </table>
+                    <div style="text-align:right;font-weight:bold;font-size:1.1em;">Total: ${total.toLocaleString('vi-VN')} ₫</div>
+                `;
+                document.getElementById('details-title').textContent = `Order Details #${orderId}`;
+                document.getElementById('details-modal').style.display = 'block';
+            } catch (e) {
+                showAlert('orders-alert', 'Error loading order details', 'error');
             }
         }
 

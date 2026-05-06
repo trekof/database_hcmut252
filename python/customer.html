@@ -374,6 +374,7 @@
             <button class="tab-btn active" onclick="switchTab('profile', event)"><i class="fas fa-user"></i> My Profile</button>
             <button class="tab-btn" onclick="switchTab('borrowing', event)"><i class="fas fa-book"></i> My Borrowing</button>
             <button class="tab-btn" onclick="switchTab('rentals', event)"><i class="fas fa-credit-card"></i> My Rentals</button>
+            <button class="tab-btn" onclick="switchTab('orders', event)"><i class="fas fa-receipt"></i> My Orders</button>
             <button class="tab-btn" onclick="switchTab('catalog', event)"><i class="fas fa-bookmark"></i> Browse Products</button>
         </div>
 
@@ -499,6 +500,33 @@
             </div>
         </div>
 
+        <!-- ORDERS TAB -->
+        <div id="orders" class="tab-content">
+            <div class="alert" id="orders-alert"></div>
+            <h2 class="section-title"><i class="fas fa-receipt"></i> My Orders</h2>
+            <div class="restricted-notice">
+                <i class="fas fa-info-circle"></i> Showing your purchase orders and details
+            </div>
+            <div class="search-box">
+                <input type="text" id="orders-search" placeholder="Search orders..." onkeyup="filterTable('orders')">
+            </div>
+            <div id="orders-loading" class="loading"><div class="spinner"></div></div>
+            <div class="table-wrapper">
+                <table id="orders-table" style="display: none; width:100%;">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Date</th>
+                            <th>Items</th>
+                            <th>Total</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orders-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- CATALOG TAB -->
         <div id="catalog" class="tab-content">
             <div class="alert" id="catalog-alert"></div>
@@ -524,6 +552,16 @@
                     <button onclick="checkoutOrder()" style="background:#28a745;color:white;padding:8px 12px;border-radius:6px;border:none;cursor:pointer">Checkout</button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <div id="details-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; overflow-y:auto;">
+        <div style="background:white; max-width:700px; margin:50px auto; padding:20px; border-radius:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h3 id="details-title"></h3>
+                <button onclick="document.getElementById('details-modal').style.display='none'" style="background:none; border:none; font-size:1.5em; cursor:pointer;">×</button>
+            </div>
+            <div id="details-content" style="max-height:500px; overflow-y:auto;"></div>
         </div>
     </div>
 
@@ -559,8 +597,91 @@
                 if (tab === 'profile') loadProfile();
                 else if (tab === 'borrowing') loadBorrowing();
                 else if (tab === 'rentals') loadRentals();
+                else if (tab === 'orders') loadOrders();
                 else if (tab === 'catalog') loadCatalog();
             }, 100);
+        }
+
+        async function loadOrders() {
+            try {
+                document.getElementById('orders-loading').style.display = 'block';
+                document.getElementById('orders-table').style.display = 'none';
+
+                const res = await fetch(`${API_URL}/orders`, { headers: getAuthHeader() });
+                const orders = await res.json();
+                const tbody = document.getElementById('orders-tbody');
+                tbody.innerHTML = '';
+
+                if (!Array.isArray(orders) || orders.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:#999;">No orders found</td></tr>';
+                    document.getElementById('orders-loading').style.display = 'none';
+                    document.getElementById('orders-table').style.display = 'table';
+                    return;
+                }
+
+                for (const order of orders) {
+                    const detailRes = await fetch(`${API_URL}/orders/${order.IDDonMuaHang}`, { headers: getAuthHeader() });
+                    const detail = await detailRes.json();
+                    const itemCount = detail.items ? detail.items.length : 0;
+                    const total = detail.items ? detail.items.reduce((sum, item) => sum + ((item.SoLuong || 0) * (item.GiaLucMua || 0)), 0) : 0;
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${order.IDDonMuaHang}</td>
+                            <td>${order.NgayMua || '-'}</td>
+                            <td>${itemCount}</td>
+                            <td>${total.toLocaleString('vi-VN')} ₫</td>
+                            <td><button onclick="showOrderDetails(${order.IDDonMuaHang})" style="background:#17a2b8; padding:4px 8px; font-size:0.8em;"><i class="fas fa-eye"></i> View</button></td>
+                        </tr>
+                    `;
+                }
+
+                document.getElementById('orders-loading').style.display = 'none';
+                document.getElementById('orders-table').style.display = 'table';
+            } catch (e) {
+                showAlert('orders-alert', '❌ Error loading orders', 'error');
+                document.getElementById('orders-loading').style.display = 'none';
+            }
+        }
+
+        async function showOrderDetails(orderId) {
+            try {
+                const res = await fetch(`${API_URL}/orders/${orderId}`, { headers: getAuthHeader() });
+                const order = await res.json();
+                if (!res.ok) throw new Error(order.error || 'Order not found');
+
+                const items = order.items || [];
+                const rows = items.map(item => `
+                    <tr>
+                        <td>${item.IDVatPham}</td>
+                        <td>${item.TenVatPham || '-'}</td>
+                        <td style="text-align:right">${item.SoLuong || 0}</td>
+                        <td style="text-align:right">${(item.GiaLucMua || 0).toLocaleString('vi-VN')} ₫</td>
+                        <td style="text-align:right">${((item.SoLuong || 0) * (item.GiaLucMua || 0)).toLocaleString('vi-VN')} ₫</td>
+                    </tr>`).join('');
+                const total = items.reduce((sum, item) => sum + ((item.SoLuong || 0) * (item.GiaLucMua || 0)), 0);
+
+                document.getElementById('details-title').textContent = `Order Details #${orderId}`;
+                document.getElementById('details-content').innerHTML = `
+                    <div style="margin-bottom:16px;"><strong>Date:</strong> ${order.NgayMua || '-'}<br><strong>Customer:</strong> ${order.SDT || order.IDKhachHang || '-'}</div>
+                    <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
+                        <thead>
+                            <tr>
+                                <th style="border-bottom:1px solid #ddd;padding:8px;text-align:left;">Product ID</th>
+                                <th style="border-bottom:1px solid #ddd;padding:8px;text-align:left;">Product Name</th>
+                                <th style="border-bottom:1px solid #ddd;padding:8px;text-align:right;">Qty</th>
+                                <th style="border-bottom:1px solid #ddd;padding:8px;text-align:right;">Price</th>
+                                <th style="border-bottom:1px solid #ddd;padding:8px;text-align:right;">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows || '<tr><td colspan="5" style="padding:12px;text-align:center;color:#777;">No items found</td></tr>'}</tbody>
+                    </table>
+                    <div style="text-align:right;font-weight:bold;font-size:1.1em;">Total: ${total.toLocaleString('vi-VN')} ₫</div>
+                `;
+                document.getElementById('details-modal').style.display = 'block';
+            } catch (e) {
+                showAlert('orders-alert', '❌ Error loading order details', 'error');
+            }
         }
 
         async function loadProfile() {

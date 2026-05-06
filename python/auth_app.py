@@ -816,6 +816,46 @@ def list_orders():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/api/orders/<int:order_id>', methods=['GET'])
+@require_auth
+def get_order(order_id):
+    """Get order details with items"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+        
+        # Get order header
+        cur.execute("SELECT d.*, k.SDT FROM DonMuaHang d LEFT JOIN KhachHang k ON d.IDKhachHang = k.IDKhachHang WHERE d.IDDonMuaHang = %s", (order_id,))
+        order = cur.fetchone()
+        
+        if not order:
+            cur.close()
+            conn.close()
+            return jsonify({"error": "Order not found"}), 404
+        
+        # Get order items
+        cur.execute("""
+            SELECT 
+                ct.IDVatPham,
+                vp.TenVatPham,
+                ct.SoLuong,
+                ct.GiaLucMua
+            FROM DonHangChiTiet ct
+            JOIN VatPham vp ON ct.IDVatPham = vp.IDVatPham
+            WHERE ct.IDDonMuaHang = %s
+        """, (order_id,))
+        items = cur.fetchall()
+        
+        order['items'] = items
+        order = convert_decimal_and_dates(order)
+        
+        cur.close()
+        conn.close()
+        return jsonify(order), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/api/orders/<int:order_id>', methods=['PATCH'])
 @require_role('Admin', 'NhanVienDungQuay')
 def update_order(order_id):
