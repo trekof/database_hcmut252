@@ -866,8 +866,11 @@ def create_order():
             id_khach = request.user['reference_id']
         else:
             id_khach = data.get('IDKhachHang')
-            if not id_khach:
-                return jsonify({"error": "IDKhachHang required for admin/staff orders"}), 400
+            if not id_khach and data.get('SDT'):
+                cur.execute("SELECT IDKhachHang FROM KhachHang WHERE SDT=%s LIMIT 1", (data.get('SDT'),))
+                row = cur.fetchone()
+                if row:
+                    id_khach = row[0]
 
         loai = data.get('LoaiHoaDon', 'Hóa đơn')
         ngay = data.get('NgayMua')
@@ -921,6 +924,123 @@ def delete_customer(id):
         
         return jsonify({"message": "Customer deleted successfully"}), 200
     except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ==================== MEMBERSHIP CARDS (THẺ THÀNH VIÊN) ====================
+
+@app.route('/api/membership-cards', methods=['GET'])
+@require_role('Admin', 'NhanVienDungQuay')
+def get_membership_cards():
+    """Get all membership cards (Admin & Staff)"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+        
+        # Get membership cards with customer info
+        cur.execute("""
+            SELECT t.CCCD_CMND, t.MaThe, t.NgayLapThe, t.NgayHetHan,
+                   CASE 
+                       WHEN t.NgayHetHan < CURDATE() THEN 'Hết hạn'
+                       WHEN DATEDIFF(t.NgayHetHan, CURDATE()) <= 30 THEN 'Sắp hết hạn'
+                       ELSE 'Còn hiệu lực'
+                   END AS TrangThai,
+                   c.IDKhachHang, c.Ho, c.Ten
+            FROM TheThanhVien t
+            JOIN CaNhan c ON t.CCCD_CMND = c.CCCD_CMND
+            ORDER BY t.CCCD_CMND, t.MaThe DESC
+        """)
+        
+        cards = cur.fetchall()
+        cards = convert_decimal_and_dates(cards)
+        cur.close()
+        conn.close()
+        
+        return jsonify(cards), 200
+    except Exception as e:
+        print('ERROR /api/membership-cards', e)
+        print(traceback.format_exc())
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/membership-cards/<cccd>', methods=['GET'])
+@require_auth
+def get_membership_cards_by_cccd(cccd):
+    """Get membership cards for a specific customer"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+        
+        cur.execute("""
+            SELECT t.CCCD_CMND, t.MaThe, t.NgayLapThe, t.NgayHetHan,
+                   CASE 
+                       WHEN t.NgayHetHan < CURDATE() THEN 'Hết hạn'
+                       WHEN DATEDIFF(t.NgayHetHan, CURDATE()) <= 30 THEN 'Sắp hết hạn'
+                       ELSE 'Còn hiệu lực'
+                   END AS TrangThai
+            FROM TheThanhVien t
+            WHERE t.CCCD_CMND = %s
+            ORDER BY t.MaThe DESC
+        """, (cccd,))
+        
+        cards = cur.fetchall()
+        cards = convert_decimal_and_dates(cards)
+        cur.close()
+        conn.close()
+        
+        return jsonify(cards), 200
+    except Exception as e:
+        print('ERROR /api/membership-cards/' + cccd, e)
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/membership-cards', methods=['POST'])
+@require_role('Admin')
+def create_membership_card():
+    """Create a new membership card (Admin only)"""
+    try:
+        data = request.get_json()
+        cccd = data.get('CCCD_CMND')
+        ngay_lap_the = data.get('NgayLapThe')
+        ngay_het_han = data.get('NgayHetHan')
+        
+        if not cccd or not ngay_lap_the or not ngay_het_han:
+            return jsonify({"error": "Missing required fields"}), 400
+        
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+        
+        # Call stored procedure to create membership card with auto-increment MaThe
+        cur.callproc('sp_insert_the_thanh_vien', [cccd, ngay_lap_the, ngay_het_han, 0])
+        
+        # Fetch the result (output parameter)
+        for result in cur.stored_results():
+            ma_the = result.fetchone()
+        
+        # If the procedure doesn't return via stored_results, fetch it directly
+        if not hasattr(cur, '_result'):
+            # Get the last inserted MaThe
+            cur.execute("""
+                SELECT MAX(MaThe) as MaThe FROM TheThanhVien WHERE CCCD_CMND = %s
+            """, (cccd,))
+            result = cur.fetchone()
+            ma_the = result['MaThe'] if result else None
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            "message": "Membership card created successfully",
+            "CCCD_CMND": cccd,
+            "MaThe": ma_the,
+            "NgayLapThe": ngay_lap_the,
+            "NgayHetHan": ngay_het_han
+        }), 201
+    except Exception as e:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        print('ERROR /api/membership-cards POST', e)
+        print(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
 # ==================== PRODUCTS ====================
@@ -1104,19 +1224,22 @@ def get_rentals():
             # Customer sees only their own rentals
             customer_id = request.user['reference_id']
             cur.execute("""
-                SELECT l.*, vp.TenVatPham
+                SELECT l.*, vp.TenVatPham, kh.SDT, kh.IDKhachHang
                 FROM LanThue l
                 JOIN VatPham vp ON l.IDVatPham = vp.IDVatPham
+                JOIN KhachHang kh ON l.IDKhachHang = kh.IDKhachHang
                 WHERE l.IDKhachHang=%s
                 ORDER BY l.NgayThue DESC
             """, (customer_id,))
         else:
-            # Admin/Staff see all
+            # Admin/Staff see all - include customer name and ID
             cur.execute("""
-                SELECT l.*, vp.TenVatPham, kh.SDT
+                SELECT l.*, vp.TenVatPham, kh.SDT, kh.IDKhachHang,
+                       c.Ho, c.Ten
                 FROM LanThue l
                 JOIN VatPham vp ON l.IDVatPham = vp.IDVatPham
                 JOIN KhachHang kh ON l.IDKhachHang = kh.IDKhachHang
+                LEFT JOIN CaNhan c ON kh.IDKhachHang = c.IDKhachHang
                 ORDER BY l.NgayThue DESC
             """)
         
@@ -1126,6 +1249,8 @@ def get_rentals():
         conn.close()
         return jsonify(rentals), 200
     except Exception as e:
+        print('ERROR /api/rentals', e)
+        print(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
 # ==================== STATS ====================

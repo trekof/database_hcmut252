@@ -318,6 +318,218 @@
             font-size: 0.9em;
             color: #721c24;
         }
+
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .product-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .product-name {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .product-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .product-info label {
+            font-weight: 500;
+            color: #666;
+            font-size: 0.9em;
+            margin: 0;
+        }
+
+        .product-price {
+            font-size: 1.2em;
+            color: #28a745;
+            font-weight: 600;
+        }
+
+        .product-qty {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .product-qty.available {
+            color: #28a745;
+        }
+
+        .product-qty.limited {
+            color: #ffc107;
+        }
+
+        .product-qty.unavailable {
+            color: #dc3545;
+        }
+
+        .billing-layout {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+        }
+
+        @media (max-width: 1200px) {
+            .billing-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .billing-main {
+            flex: 1;
+        }
+
+        .billing-sidebar {
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+        }
+
+        .billing-sidebar h3 {
+            color: #28a745;
+            margin-bottom: 15px;
+            text-align: center;
+            border-bottom: 2px solid #28a745;
+            padding-bottom: 10px;
+        }
+
+        .cart-item {
+            background: white;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 5px;
+            border-left: 4px solid #28a745;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85em;
+        }
+
+        .cart-item-details {
+            flex: 1;
+        }
+
+        .cart-item-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .cart-item-qty {
+            color: #666;
+            font-size: 0.8em;
+        }
+
+        .cart-item-price {
+            font-weight: 600;
+            color: #28a745;
+            margin-right: 8px;
+        }
+
+        .cart-remove-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8em;
+        }
+
+        .cart-remove-btn:hover {
+            background: #c82333;
+        }
+
+        .billing-summary {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid #dee2e6;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .summary-total {
+            font-size: 1.2em;
+            color: #28a745;
+            border-top: 2px solid #dee2e6;
+            padding-top: 10px;
+            margin-top: 10px;
+            text-align: right;
+        }
+
+        .customer-select {
+            margin-bottom: 15px;
+        }
+
+        .billing-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .billing-actions button {
+            flex: 1;
+            padding: 10px;
+            font-size: 0.9em;
+        }
+
+        .checkout-btn {
+            background: linear-gradient(135deg, #28a745 0%, #1c7a2d 100%);
+        }
+
+        .checkout-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .clear-btn {
+            background: #6c757d;
+        }
+
+        .clear-btn:hover {
+            background: #5a6268;
+        }
+
+        .transaction-type {
+            margin-bottom: 12px;
+        }
+
+        .transaction-type label {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .transaction-type input[type="radio"] {
+            width: auto;
+            margin-right: 8px;
+        }
     </style>
 </head>
 <body>
@@ -352,14 +564,71 @@
 
         <!-- Tabs Navigation -->
         <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('customers', event)"><i class="fas fa-users"></i> Customers</button>
+            <button class="tab-btn active" onclick="switchTab('billing', event)"><i class="fas fa-calculator"></i> Billing</button>
+            <button class="tab-btn" onclick="switchTab('customers', event)"><i class="fas fa-users"></i> Customers</button>
             <button class="tab-btn" onclick="switchTab('products', event)"><i class="fas fa-box"></i> Products</button>
             <button class="tab-btn" onclick="switchTab('borrowing', event)"><i class="fas fa-book"></i> Borrowing</button>
             <button class="tab-btn" onclick="switchTab('rental', event)"><i class="fas fa-credit-card"></i> Rentals</button>
         </div>
 
-        <!-- CUSTOMERS TAB -->
-        <div id="customers" class="tab-content active">
+        <!-- BILLING TAB -->
+        <div id="billing" class="tab-content active">
+            <div class="alert" id="billing-alert"></div>
+            <div class="billing-layout">
+                <div class="billing-main">
+                    <h3><i class="fas fa-search"></i> Select Products</h3>
+                    <div class="search-box">
+                        <input type="text" id="billing-search" placeholder="Search products..." onkeyup="filterBillingProducts()">
+                    </div>
+                    <div id="billing-loading" class="loading"><div class="spinner"></div></div>
+                    <div id="billing-content" class="product-grid" style="display: none;"></div>
+                </div>
+
+                <div class="billing-sidebar">
+                    <h3><i class="fas fa-calculator"></i> Order Summary</h3>
+                    
+                    <div class="customer-select">
+                        <label>Customer Phone</label>
+                        <input type="text" id="billing-customer-phone" placeholder="Optional for sale, required for rental" style="margin-bottom: 8px;">
+                        <small style="color: #666;">Chỉ cần nhập số điện thoại khi thuê/mượn.</small>
+                    </div>
+
+                    <div class="transaction-type">
+                        <label>Transaction Type:</label>
+                        <label><input type="radio" name="trans-type" value="order" checked> Order</label>
+                        <label><input type="radio" name="trans-type" value="rental"> Rental</label>
+                    </div>
+
+                    <div id="cart-list" style="max-height: 400px; overflow-y: auto;">
+                        <p style="text-align: center; color: #999; padding: 20px;">Empty cart</p>
+                    </div>
+
+                    <div class="billing-summary">
+                        <div class="summary-row">
+                            <span>Subtotal:</span>
+                            <span id="subtotal">0 ₫</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>Items:</span>
+                            <span id="item-count">0</span>
+                        </div>
+                        <div class="summary-total">
+                            Total: <span id="total-amount">0 ₫</span>
+                        </div>
+                    </div>
+
+                    <div class="billing-actions">
+                        <button class="checkout-btn" onclick="checkoutBilling()" id="checkout-billing-btn">
+                            <i class="fas fa-check-circle"></i> Checkout
+                        </button>
+                        <button class="clear-btn" onclick="clearBillingCart()">
+                            <i class="fas fa-trash"></i> Clear
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="customers" class="tab-content">
             <div class="alert" id="customers-alert"></div>
             <div class="content-section">
                 <div class="form-section">
@@ -490,6 +759,8 @@
         const API_URL = 'http://localhost:5000/api';
         let token = localStorage.getItem('token');
         let currentUser = JSON.parse(localStorage.getItem('user'));
+        let billingProducts = [];
+        let BILLING_CART = [];
 
         window.addEventListener('load', () => {
             if (!token || currentUser.role !== 'NhanVienDungQuay') {
@@ -499,7 +770,8 @@
             
             document.getElementById('userDisplay').textContent = `Xin chào, ${currentUser.username} (Cashier)`;
             loadStats();
-            loadCustomers();
+            loadBillingProducts();
+            renderBillingCart();
         });
 
         function getAuthHeader() {
@@ -514,7 +786,8 @@
             document.getElementById(tab).classList.add('active');
             
             setTimeout(() => {
-                if (tab === 'customers') loadCustomers();
+                if (tab === 'billing') loadBillingProducts();
+                else if (tab === 'customers') loadCustomers();
                 else if (tab === 'products') loadProducts();
                 else if (tab === 'borrowing') loadBorrowing();
                 else if (tab === 'rental') loadRental();
@@ -615,6 +888,172 @@
             } catch (e) {
                 showAlert('products-alert', 'Error loading products', 'error');
             }
+        }
+
+        async function loadBillingProducts() {
+            try {
+                document.getElementById('billing-loading').style.display = 'block';
+                document.getElementById('billing-content').style.display = 'none';
+                
+                const res = await fetch(`${API_URL}/products`, { headers: getAuthHeader() });
+                billingProducts = await res.json();
+                
+                if (!Array.isArray(billingProducts) || billingProducts.length === 0) {
+                    document.getElementById('billing-loading').style.display = 'none';
+                    document.getElementById('billing-content').innerHTML = '<p style="color:#999; padding:20px; text-align:center;">No products available.</p>';
+                    document.getElementById('billing-content').style.display = 'block';
+                    return;
+                }
+                
+                renderBillingProducts(billingProducts);
+                document.getElementById('billing-loading').style.display = 'none';
+                document.getElementById('billing-content').style.display = 'grid';
+            } catch (e) {
+                showAlert('billing-alert', 'Error loading products', 'error');
+                document.getElementById('billing-loading').style.display = 'none';
+            }
+        }
+
+        function renderBillingProducts(products) {
+            const content = document.getElementById('billing-content');
+            content.innerHTML = '';
+            
+            products.forEach(p => {
+                const available = p.SoLuongKhaDung || 0;
+                const qtyClass = available === 0 ? 'unavailable' : available <= 3 ? 'limited' : 'available';
+                const qtyText = available === 0 ? 'Out of stock' : `${available} available`;
+                
+                content.innerHTML += `
+                    <div class="product-card">
+                        <div class="product-name">${p.TenVatPham}</div>
+                        <div class="product-info">
+                            <label>Price:</label>
+                            <span class="product-price">${(p.GiaNiemYet || 0).toLocaleString('vi-VN')} ₫</span>
+                        </div>
+                        <div class="product-qty ${qtyClass}">
+                            <i class="fas fa-info-circle"></i> ${qtyText}
+                        </div>
+                        <div style="margin-top:10px;display:flex;gap:8px;align-items:center;">
+                            <input type="number" min="1" max="${available}" value="1" id="billing-qty-${p.IDVatPham}" style="width:80px;padding:6px;border:1px solid #ddd;border-radius:4px" ${available === 0 ? 'disabled' : ''}>
+                            <button onclick="addToBillingCart(${p.IDVatPham}, '${p.TenVatPham.replace(/'/g, "\\'")}', ${p.GiaNiemYet || 0}, ${available})" ${available === 0 ? 'disabled' : ''}>
+                                <i class="fas fa-shopping-cart"></i> Add
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function addToBillingCart(id, name, price, maxQty) {
+            const qtyEl = document.getElementById(`billing-qty-${id}`);
+            const qty = parseInt(qtyEl?.value || 1, 10);
+            if (!qty || qty < 1) {
+                showAlert('billing-alert', 'Please enter a valid quantity', 'error');
+                return;
+            }
+            if (qty > maxQty) {
+                showAlert('billing-alert', `Maximum available quantity is ${maxQty}`, 'error');
+                return;
+            }
+            const existing = BILLING_CART.find(item => item.IDVatPham === id);
+            if (existing) {
+                existing.SoLuong = Math.min(existing.SoLuong + qty, maxQty);
+            } else {
+                BILLING_CART.push({ IDVatPham: id, TenVatPham: name, SoLuong: qty, GiaLucMua: price });
+            }
+            renderBillingCart();
+        }
+
+        function renderBillingCart() {
+            const cartList = document.getElementById('cart-list');
+            if (BILLING_CART.length === 0) {
+                cartList.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">Empty cart</p>';
+                updateBillingSummary();
+                return;
+            }
+            
+            let html = '';
+            BILLING_CART.forEach((item, index) => {
+                html += `
+                    <div class="cart-item">
+                        <div class="cart-item-details">
+                            <div class="cart-item-name">${item.TenVatPham}</div>
+                            <div class="cart-item-qty">Qty: ${item.SoLuong} × ${(item.GiaLucMua || 0).toLocaleString('vi-VN')} ₫</div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <span class="cart-item-price">${(item.SoLuong * item.GiaLucMua || 0).toLocaleString('vi-VN')} ₫</span>
+                            <button class="cart-remove-btn" onclick="removeBillingItem(${index})">Remove</button>
+                        </div>
+                    </div>
+                `;
+            });
+            cartList.innerHTML = html;
+            updateBillingSummary();
+        }
+
+        function removeBillingItem(index) {
+            BILLING_CART.splice(index, 1);
+            renderBillingCart();
+        }
+
+        function clearBillingCart() {
+            BILLING_CART = [];
+            renderBillingCart();
+        }
+
+        function updateBillingSummary() {
+            const subtotal = BILLING_CART.reduce((sum, item) => sum + (item.SoLuong * item.GiaLucMua || 0), 0);
+            const itemCount = BILLING_CART.reduce((sum, item) => sum + item.SoLuong, 0);
+            document.getElementById('subtotal').textContent = `${subtotal.toLocaleString('vi-VN')} ₫`;
+            document.getElementById('item-count').textContent = itemCount;
+            document.getElementById('total-amount').textContent = `${subtotal.toLocaleString('vi-VN')} ₫`;
+            document.getElementById('checkout-billing-btn').disabled = BILLING_CART.length === 0;
+        }
+
+        async function checkoutBilling() {
+            if (BILLING_CART.length === 0) {
+                showAlert('billing-alert', 'Cart is empty', 'error');
+                return;
+            }
+            
+            const transactionType = document.querySelector('input[name="trans-type"]:checked').value;
+            const customerPhone = document.getElementById('billing-customer-phone')?.value.trim();
+            
+            if (transactionType === 'rental' && !customerPhone) {
+                showAlert('billing-alert', 'Customer phone is required for rental', 'error');
+                return;
+            }
+
+            const payload = {
+                items: BILLING_CART,
+                LoaiHoaDon: transactionType === 'order' ? 'Hóa đơn bán hàng' : 'Hóa đơn thuê',
+                NgayMua: new Date().toISOString().split('T')[0],
+                isDelivery: false
+            };
+
+            if (customerPhone) {
+                payload.SDT = customerPhone;
+            }
+
+            try {
+                const res = await fetch(`${API_URL}/orders`, {
+                    method: 'POST',
+                    headers: getAuthHeader(),
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Checkout failed');
+                showAlert('billing-alert', `Checkout successful: ${data.IDDonMuaHang}`, 'success');
+                clearBillingCart();
+            } catch (e) {
+                showAlert('billing-alert', `Error: ${e.message || e}`, 'error');
+            }
+        }
+
+        function filterBillingProducts() {
+            const search = document.getElementById('billing-search').value.toLowerCase();
+            const filtered = billingProducts.filter(p => p.TenVatPham?.toLowerCase().includes(search));
+            renderBillingProducts(filtered);
         }
 
         // BORROWING

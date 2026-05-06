@@ -4,7 +4,6 @@ Replace inline user creation with SQL file execution.
 This script executes `sql/07_init_users.sql` to initialize demo users.
 """
 
-import os
 import sys
 from pathlib import Path
 

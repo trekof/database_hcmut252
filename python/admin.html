@@ -384,6 +384,7 @@
             <button class="tab-btn" onclick="switchTab('customers', event)"><i class="fas fa-shopping-bag"></i> Customers</button>
             <button class="tab-btn" onclick="switchTab('products', event)"><i class="fas fa-box-open"></i> Products</button>
             <button class="tab-btn" onclick="switchTab('borrowing', event)"><i class="fas fa-book"></i> Borrowing</button>
+            <button class="tab-btn" onclick="switchTab('membership', event)"><i class="fas fa-id-card"></i> Membership Cards</button>
             <button class="tab-btn" onclick="switchTab('rental', event)"><i class="fas fa-credit-card"></i> Rental</button>
         </div>
 
@@ -651,6 +652,56 @@
             </div>
         </div>
 
+        <!-- MEMBERSHIP CARDS TAB -->
+        <div id="membership" class="tab-content">
+            <div class="alert" id="membership-alert"></div>
+            <div class="content-section">
+                <div class="form-section">
+                    <h3><i class="fas fa-id-card"></i> Create New Membership Card</h3>
+                    <form id="membership-form">
+                        <div class="form-group">
+                            <label>Customer CCCD/CMND *</label>
+                            <input type="text" id="membership-cccd" placeholder="111111111111" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Card Issue Date *</label>
+                            <input type="date" id="membership-ngay-lap" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Card Expiry Date *</label>
+                            <input type="date" id="membership-ngay-het" required>
+                        </div>
+                        <button type="submit" class="btn-primary">Create Card</button>
+                        <button type="button" class="btn-secondary" onclick="clearForm('membership-form')">Clear</button>
+                    </form>
+                </div>
+
+                <div class="table-section">
+                    <h3><i class="fas fa-id-card"></i> All Membership Cards</h3>
+                    <div class="search-box">
+                        <input type="text" id="membership-search" placeholder="Search..." onkeyup="filterTable('membership')">
+                    </div>
+                    <div id="membership-loading" class="loading"><div class="spinner"></div></div>
+                    <div class="table-wrapper">
+                        <table id="membership-table" style="display: none;">
+                            <thead>
+                                <tr>
+                                    <th>Customer ID</th>
+                                    <th>CCCD/CMND</th>
+                                    <th>Card #</th>
+                                    <th>Customer Name</th>
+                                    <th>Issue Date</th>
+                                    <th>Expiry Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="membership-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- RENTAL TAB -->
         <div id="rental" class="tab-content">
             <div class="alert" id="rental-alert"></div>
@@ -665,6 +716,7 @@
                         <thead>
                             <tr>
                                 <th>ID</th>
+                                <th>Customer ID</th>
                                 <th>Customer</th>
                                 <th>Product</th>
                                 <th>Rent Date</th>
@@ -712,6 +764,7 @@
                 else if (tab === 'customers') loadCustomers();
                 else if (tab === 'products') loadProducts();
                 else if (tab === 'borrowing') loadBorrowing();
+                else if (tab === 'membership') loadMembership();
                 else if (tab === 'rental') loadRental();
             }, 100);
         }
@@ -1277,10 +1330,12 @@
                 tbody.innerHTML = '';
                 
                 items.forEach(item => {
+                    const customerName = item.Ho && item.Ten ? `${item.Ho} ${item.Ten}` : item.Ho || item.Ten || '-';
                     tbody.innerHTML += `
                         <tr>
                             <td>${item.MaDonThue || '-'}</td>
-                            <td>${item.IDKhachHang}</td>
+                            <td><strong>${item.IDKhachHang}</strong></td>
+                            <td>${customerName}</td>
                             <td>${item.TenVatPham}</td>
                             <td>${item.NgayThue}</td>
                             <td>${item.NgayTra || '-'}</td>
@@ -1290,13 +1345,47 @@
                 });
                 
                 if (items.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: #999;">No rental records</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: #999;">No rental records</td></tr>';
                 }
                 
                 document.getElementById('rental-loading').style.display = 'none';
                 document.getElementById('rental-table').style.display = 'table';
             } catch (e) {
                 showAlert('rental-alert', 'Error loading rentals', 'error');
+            }
+        }
+
+        // MEMBERSHIP CARDS
+        async function loadMembership() {
+            try {
+                const res = await fetch(`${API_URL}/membership-cards`, { headers: getAuthHeader() });
+                const items = await res.json();
+                
+                const tbody = document.getElementById('membership-tbody');
+                tbody.innerHTML = '';
+                
+                items.forEach(item => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${item.IDKhachHang}</td>
+                            <td>${item.CCCD_CMND}</td>
+                            <td>${item.MaThe}</td>
+                            <td>${item.Ho} ${item.Ten}</td>
+                            <td>${item.NgayLapThe}</td>
+                            <td>${item.NgayHetHan}</td>
+                            <td><span class="badge ${item.TrangThai === 'Còn hiệu lực' ? 'badge-success' : 'badge-danger'}">${item.TrangThai}</span></td>
+                        </tr>
+                    `;
+                });
+                
+                if (items.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: #999;">No membership cards</td></tr>';
+                }
+                
+                document.getElementById('membership-loading').style.display = 'none';
+                document.getElementById('membership-table').style.display = 'table';
+            } catch (e) {
+                showAlert('membership-alert', 'Error loading membership cards', 'error');
             }
         }
 
@@ -1316,6 +1405,50 @@
                 return age;
             }catch(e){ return 0; }
         }
+
+        // MEMBERSHIP CARD FORM HANDLER
+        document.getElementById('membership-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                const cccd = document.getElementById('membership-cccd').value;
+                const ngayLap = document.getElementById('membership-ngay-lap').value;
+                const ngayHet = document.getElementById('membership-ngay-het').value;
+                
+                if (!cccd || !ngayLap || !ngayHet) {
+                    showAlert('membership-alert', 'All fields are required', 'error');
+                    return;
+                }
+                
+                // Validate dates
+                const startDate = new Date(ngayLap);
+                const endDate = new Date(ngayHet);
+                if (endDate <= startDate) {
+                    showAlert('membership-alert', 'Expiry date must be after issue date', 'error');
+                    return;
+                }
+                
+                const res = await fetch(`${API_URL}/membership-cards`, {
+                    method: 'POST',
+                    headers: getAuthHeader(),
+                    body: JSON.stringify({
+                        CCCD_CMND: cccd,
+                        NgayLapThe: ngayLap,
+                        NgayHetHan: ngayHet
+                    })
+                });
+                
+                const data = await res.json();
+                if (res.ok) {
+                    showAlert('membership-alert', `Membership card created! Card #${data.MaThe}`, 'success');
+                    clearForm('membership-form');
+                    loadMembership();
+                } else {
+                    showAlert('membership-alert', data.error || 'Error creating card', 'error');
+                }
+            } catch (e) {
+                showAlert('membership-alert', 'Error: ' + e.message, 'error');
+            }
+        });
 
         function filterTable(tab) {
             const search = document.getElementById(`${tab}-search`).value.toLowerCase();
